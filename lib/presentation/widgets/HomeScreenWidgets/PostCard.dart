@@ -21,13 +21,19 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:html/parser.dart' show parse;
+import 'package:url_launcher/url_launcher.dart';
+import 'package:vervee_app/presentation/screen/PostDetailScreen.dart';
 import 'package:vervee_app/presentation/widgets/HomeScreenWidgets/showCommentSheet.dart';
 import 'package:vervee_app/presentation/widgets/HomeScreenWidgets/showEditPostSheet.dart';
 import 'package:video_player/video_player.dart';
+import 'package:visibility_detector/visibility_detector.dart';
 import '../../../domain/model/post/GetPost.dart';
 import '../../../domain/model/post/PostComment.dart';
+import '../../../main.dart';
+import '../../../utils/ReelNavGuard.dart';
 import '../../../utils/ShimmerBox.dart';
 import '../../screen/HomeScreen.dart';
+import '../../screen/VideoPostDetail.dart';
 import '../../viewmodal/avatar/AvatarViewModel.dart';
 import '../../viewmodal/post/GetPostViewModel.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
@@ -63,9 +69,14 @@ class PostCard extends ConsumerStatefulWidget {
 
 class _PostCardState extends ConsumerState<PostCard>
     with TickerProviderStateMixin {
+
+  final GlobalKey<_PostVideoAreaState> _videoAreaKey =
+  GlobalKey<_PostVideoAreaState>(); // ✅ NEW
+
   late AnimationController _likeCtrl;
   late Animation<double>   _likeScale;
   bool _isSharing  = false;
+  bool _isNavigatingToReel = false; // ✅ NEW — ghost-tap guard
 
   // ✅ NEW — Double-tap heart pop animation ke liye (Instagram jaisa)
   late AnimationController _heartPopCtrl;
@@ -114,13 +125,6 @@ class _PostCardState extends ConsumerState<PostCard>
               .chain(CurveTween(curve: Curves.easeOut)),
           weight: 30),
     ]).animate(_heartPopCtrl);
-
-
-    // ✅ Agar post me image nahi hai → abhi se ready
-    // final hasImage = widget.post.filePath != null &&
-    //     widget.post.filePath!.isNotEmpty &&
-    //     widget.post.fileType == 'image';
-    // _imageReady = !hasImage;
 
     // ✅ Agar post me image/video nahi hai → abhi se ready
     final hasMedia = widget.post.filePath != null &&
@@ -178,15 +182,6 @@ class _PostCardState extends ConsumerState<PostCard>
   }
 
   void _handleComment() => showCommentSheet(context, ref, widget.post);
-
-  // void _handleComment() {
-  //   showCommentSheet(
-  //     context, ref, widget.post,
-  //     onCommentAdded: () {
-  //       if (mounted) setState(() => _commentDelta++);
-  //     },
-  //   );
-  // }
 
   void _showMoreMenu(BuildContext context) {
     showModalBottomSheet(
@@ -249,22 +244,31 @@ class _PostCardState extends ConsumerState<PostCard>
               ]),
             ),
             const Divider(color: kBorder, height: 1),
-            // Expanded(
-            //   child: SingleChildScrollView(
-            //     controller: scrollCtrl,
-            //     padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-            //     child: Text(
-            //       parseHtmlString(widget.post.content),
-            //       style: const TextStyle(color: kTextMuted, fontSize: 14, height: 1.7),
-            //     ),
-            //   ),
-            // ),
             Expanded(
               child: SingleChildScrollView(
                 controller: scrollCtrl,
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
                 child: Html(
                   data: widget.post.content, // ✅ raw HTML seedha pass karo, plain text nahi
+                  onLinkTap: (url, attributes, element) async {
+                    if (url == null || url.isEmpty) return;
+
+                    // Agar URL me scheme na ho (http/https) to add karo
+                    final fixedUrl = url.startsWith('http://') || url.startsWith('https://')
+                        ? url
+                        : 'https://$url';
+
+                    final uri = Uri.tryParse(fixedUrl);
+                    if (uri == null) return;
+
+                    if (await canLaunchUrl(uri)) {
+                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                    } else if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Could not open link')),
+                      );
+                    }
+                  },
                   style: {
                     "body": Style(
                       color: kTextMuted,
@@ -296,9 +300,50 @@ class _PostCardState extends ConsumerState<PostCard>
                     ),
                     "a": Style(
                       color: kPurpleLight,
+                      textDecoration: TextDecoration.underline, // ✅ bonus — link visually clear dikhega
                     ),
                   },
                 ),
+
+
+
+
+                // Html(
+                //   data: widget.post.content, // ✅ raw HTML seedha pass karo, plain text nahi
+                //   style: {
+                //     "body": Style(
+                //       color: kTextMuted,
+                //       fontSize: FontSize(14),
+                //       lineHeight: LineHeight(1.7),
+                //       margin: Margins.zero,
+                //       padding: HtmlPaddings.zero,
+                //     ),
+                //     "p": Style(
+                //       margin: Margins.only(bottom: 10),
+                //     ),
+                //     "ul": Style(
+                //       margin: Margins.only(bottom: 10, left: 4),
+                //       padding: HtmlPaddings.only(left: 16),
+                //     ),
+                //     "ol": Style(
+                //       margin: Margins.only(bottom: 10, left: 4),
+                //       padding: HtmlPaddings.only(left: 16),
+                //     ),
+                //     "li": Style(
+                //       margin: Margins.only(bottom: 4),
+                //     ),
+                //     "strong": Style(
+                //       color: kTextPrimary,
+                //       fontWeight: FontWeight.w700,
+                //     ),
+                //     "em": Style(
+                //       fontStyle: FontStyle.italic,
+                //     ),
+                //     "a": Style(
+                //       color: kPurpleLight,
+                //     ),
+                //   },
+                // ),
               ),
             ),
           ]),
@@ -342,7 +387,7 @@ class _PostCardState extends ConsumerState<PostCard>
       // Offstage = render nahi hota, sirf image cache hoti hai
       Offstage(
       offstage: true,
-      child: _PostImageArea(
+      child: PostImageArea(
         post: post,
         isTablet: widget.isTablet,
         onImageReady: () {
@@ -362,444 +407,10 @@ class _PostCardState extends ConsumerState<PostCard>
       duration: const Duration(milliseconds: 250),
       //child: _buildRealCard(context, post, catColor),
         child: _buildRealCard(context, post, catColor, avatarUrl),
-
-      // child: Container(
-      //   margin: widget.isTablet ? EdgeInsets.zero : const EdgeInsets.only(bottom: 8),
-      //   decoration: BoxDecoration(
-      //     color: kBgCard,
-      //     borderRadius: widget.isTablet ? BorderRadius.circular(14) : null,
-      //     border: widget.isTablet
-      //         ? Border.all(color: kBorder, width: 0.5)
-      //         : const Border(bottom: BorderSide(color: kBorder, width: 0.5)),
-      //   ),
-      //   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      //
-      //     // ── Header ────────────────────────────────────────────────────────
-      //     Padding(
-      //       padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
-      //       child: Row(children: [
-      //         Container(
-      //           width: 36, height: 36,
-      //           decoration: const BoxDecoration(
-      //             shape: BoxShape.circle,
-      //             gradient: LinearGradient(
-      //               colors: [kGold, kPurple],
-      //               begin: Alignment.topLeft,
-      //               end: Alignment.bottomRight,
-      //             ),
-      //           ),
-      //           child: Center(
-      //             child: Text(_initial(post.userName),
-      //                 style: const TextStyle(
-      //                     color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700)),
-      //           ),
-      //         ),
-      //         const SizedBox(width: 10),
-      //         Expanded(
-      //           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      //             Text(post.userName,
-      //                 style: const TextStyle(
-      //                     color: kGold, fontSize: 12, fontWeight: FontWeight.w600)),
-      //             Text(_timeAgo(post.createdAt),
-      //                 style: const TextStyle(color: kTextMuted, fontSize: 10)),
-      //           ]),
-      //         ),
-      //         Container(
-      //           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      //           decoration: BoxDecoration(
-      //             color: catColor.withOpacity(0.12),
-      //             borderRadius: BorderRadius.circular(20),
-      //             border: Border.all(color: catColor.withOpacity(0.5), width: 0.8),
-      //           ),
-      //           child: Text(post.category,
-      //               style: TextStyle(
-      //                   color: catColor, fontSize: 9.5,
-      //                   fontWeight: FontWeight.w700, letterSpacing: 0.5)),
-      //         ),
-      //         const SizedBox(width: 8),
-      //         if (post.isOwner)
-      //           GestureDetector(
-      //             onTap: () => _showMoreMenu(context),
-      //             child: const Icon(Icons.more_horiz_rounded, color: kPurpleLight, size: 20),
-      //           )
-      //         else
-      //           const SizedBox(width: 20),
-      //       ]),
-      //     ),
-      //
-      //     // ── Image (already loaded) ─────────────────────────────────────────
-      //     _PostImageArea(
-      //       post: post,
-      //       isTablet: widget.isTablet,
-      //       onImageReady: () {}, // Already ready, kuch nahi karna
-      //     ),
-      //
-      //     // ── Title ─────────────────────────────────────────────────────────
-      //     Padding(
-      //       padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
-      //       child: Text(post.title,
-      //         style: const TextStyle(
-      //             color: kTextPrimary, fontSize: 13,
-      //             fontWeight: FontWeight.w700, height: 1.4),
-      //         maxLines: widget.isTablet ? 3 : 2,
-      //         overflow: TextOverflow.ellipsis,
-      //       ),
-      //     ),
-      //
-      //     // ── Content preview + Actions ──────────────────────────────────────
-      //     Padding(
-      //       padding: const EdgeInsets.fromLTRB(12, 2, 12, 10),
-      //       child: LayoutBuilder(
-      //         builder: (context, constraints) {
-      //           final text = _stripHtml(post.content);
-      //           final textPainter = TextPainter(
-      //             text: TextSpan(
-      //                 text: text,
-      //                 style: const TextStyle(fontSize: 12, height: 1.5)),
-      //             maxLines: 2,
-      //             textDirection: TextDirection.ltr,
-      //           )..layout(maxWidth: constraints.maxWidth);
-      //           final isOverflowing = textPainter.didExceedMaxLines;
-      //
-      //           return Column(
-      //             crossAxisAlignment: CrossAxisAlignment.start,
-      //             children: [
-      //               Text(text,
-      //                 style: const TextStyle(
-      //                     color: kTextMuted, fontSize: 12, height: 1.5),
-      //                 maxLines: 2,
-      //                 overflow: TextOverflow.ellipsis,
-      //               ),
-      //               Padding(
-      //                 padding: const EdgeInsets.only(top: 8),
-      //                 child: Row(children: [
-      //                   // Like
-      //                   GestureDetector(
-      //                     onTap: _handleLike,
-      //                     child: Row(children: [
-      //                       ScaleTransition(
-      //                         scale: _likeScale,
-      //                         child: Icon(
-      //                           post.isLiked
-      //                               ? Icons.favorite_rounded
-      //                               : Icons.favorite_border_rounded,
-      //                           size: 18,
-      //                           color: post.isLiked
-      //                               ? const Color(0xFFEA4335)
-      //                               : kTextMuted,
-      //                         ),
-      //                       ),
-      //                       const SizedBox(width: 4),
-      //                       Text('${post.likesCount}',
-      //                           style: TextStyle(
-      //                             fontSize: 11,
-      //                             color: post.isLiked
-      //                                 ? const Color(0xFFEA4335)
-      //                                 : kTextMuted,
-      //                           )),
-      //                     ]),
-      //                   ),
-      //                   const SizedBox(width: 16),
-      //                   // Comment
-      //                   GestureDetector(
-      //                     onTap: _handleComment,
-      //                     child: const Row(children: [
-      //                       Icon(Icons.chat_bubble_outline_rounded,
-      //                           size: 16, color: kTextMuted),
-      //                       SizedBox(width: 4),
-      //                       Text('Comment',
-      //                           style: TextStyle(
-      //                               color: kTextMuted, fontSize: 11)),
-      //                     ]),
-      //                   ),
-      //                   const SizedBox(width: 16),
-      //                   // Share
-      //                   GestureDetector(
-      //                     onTap: _isSharing ? null : () async {
-      //                       setState(() => _isSharing = true);
-      //                       final hasImage = post.filePath != null &&
-      //                           post.filePath!.isNotEmpty &&
-      //                           post.fileType == 'image';
-      //                       try {
-      //                         if (hasImage) {
-      //                           final response =
-      //                           await http.get(Uri.parse(post.filePath!));
-      //                           final tempDir =
-      //                           await getTemporaryDirectory();
-      //                           final tempFile = File(
-      //                               '${tempDir.path}/share_image.jpg');
-      //                           await tempFile
-      //                               .writeAsBytes(response.bodyBytes);
-      //                           await Share.shareXFiles(
-      //                             [XFile(tempFile.path)],
-      //                             text:
-      //                             '${post.title}\n\n${_stripHtml(post.content)}',
-      //                             subject: post.title,
-      //                           );
-      //                         } else {
-      //                           await Share.share(
-      //                             '${post.title}\n\n${_stripHtml(post.content)}',
-      //                             subject: post.title,
-      //                           );
-      //                         }
-      //                       } catch (_) {
-      //                         await Share.share(
-      //                           '${post.title}\n\n${_stripHtml(post.content)}',
-      //                           subject: post.title,
-      //                         );
-      //                       } finally {
-      //                         if (mounted)
-      //                           setState(() => _isSharing = false);
-      //                       }
-      //                     },
-      //                     child: _isSharing
-      //                         ? const SizedBox(
-      //                       width: 16, height: 16,
-      //                       child: CircularProgressIndicator(
-      //                           strokeWidth: 1.5, color: kTextMuted),
-      //                     )
-      //                         : const Icon(Icons.share_outlined,
-      //                         size: 16, color: kTextMuted),
-      //                   ),
-      //                   const Spacer(),
-      //                   if (isOverflowing)
-      //                     GestureDetector(
-      //                       onTap: () => _showFullContent(context),
-      //                       child: const Text('Read more',
-      //                           style: TextStyle(
-      //                               color: kPurpleLight,
-      //                               fontSize: 11,
-      //                               fontWeight: FontWeight.w500)),
-      //                     ),
-      //                 ]),
-      //               ),
-      //             ],
-      //           );
-      //         },
-      //       ),
-      //     ),
-      //   ]),
-      // ),
     ),
   ],
     );
   }
-
-
-
-  // Widget _buildRealCard(BuildContext context, GetPost post, Color catColor) {
-  //   return Container(
-  //     margin: widget.isTablet ? EdgeInsets.zero : const EdgeInsets.only(bottom: 8),
-  //     decoration: BoxDecoration(
-  //       color: kBgCard,
-  //       borderRadius: widget.isTablet ? BorderRadius.circular(14) : null,
-  //       border: widget.isTablet
-  //           ? Border.all(color: kBorder, width: 0.5)
-  //           : const Border(bottom: BorderSide(color: kBorder, width: 0.5)),
-  //     ),
-  //     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-  //       // ── Header ──────────────────────────────────────────────────────────
-  //       Padding(
-  //         padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
-  //         child: Row(children: [
-  //           Container(
-  //             width: 36, height: 36,
-  //             decoration: const BoxDecoration(
-  //               shape: BoxShape.circle,
-  //               gradient: LinearGradient(
-  //                 colors: [kGold, kPurple],
-  //                 begin: Alignment.topLeft,
-  //                 end: Alignment.bottomRight,
-  //               ),
-  //             ),
-  //             child: Center(
-  //               child: Text(_initial(post.userName),
-  //                   style: const TextStyle(
-  //                       color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700)),
-  //             ),
-  //           ),
-  //           const SizedBox(width: 10),
-  //           Expanded(
-  //             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-  //               Text(post.userName,
-  //                   style: const TextStyle(
-  //                       color: kGold, fontSize: 12, fontWeight: FontWeight.w600)),
-  //               Text(_timeAgo(post.createdAt),
-  //                   style: const TextStyle(color: kTextMuted, fontSize: 10)),
-  //             ]),
-  //           ),
-  //           Container(
-  //             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-  //             decoration: BoxDecoration(
-  //               color: catColor.withOpacity(0.12),
-  //               borderRadius: BorderRadius.circular(20),
-  //               border: Border.all(color: catColor.withOpacity(0.5), width: 0.8),
-  //             ),
-  //             child: Text(post.category,
-  //                 style: TextStyle(
-  //                     color: catColor, fontSize: 9.5,
-  //                     fontWeight: FontWeight.w700, letterSpacing: 0.5)),
-  //           ),
-  //           const SizedBox(width: 8),
-  //           if (post.isOwner)
-  //             GestureDetector(
-  //               onTap: () => _showMoreMenu(context),
-  //               child: const Icon(Icons.more_horiz_rounded, color: kPurpleLight, size: 20),
-  //             )
-  //           else
-  //             const SizedBox(width: 20),
-  //         ]),
-  //       ),
-  //
-  //       // ── Image (already loaded via Offstage) ───────────────────────────
-  //       _PostImageArea(
-  //         post: post,
-  //         isTablet: widget.isTablet,
-  //         onImageReady: () {}, // Already loaded, ignore
-  //       ),
-  //
-  //       // ── Title ────────────────────────────────────────────────────────────
-  //       Padding(
-  //         padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
-  //         child: Text(post.title,
-  //           style: const TextStyle(
-  //               color: kTextPrimary, fontSize: 13,
-  //               fontWeight: FontWeight.w700, height: 1.4),
-  //           maxLines: widget.isTablet ? 3 : 2,
-  //           overflow: TextOverflow.ellipsis,
-  //         ),
-  //       ),
-  //
-  //       // ── Content + Actions ─────────────────────────────────────────────
-  //       Padding(
-  //         padding: const EdgeInsets.fromLTRB(12, 2, 12, 10),
-  //         child: LayoutBuilder(
-  //           builder: (context, constraints) {
-  //             final text = _stripHtml(post.content);
-  //             final textPainter = TextPainter(
-  //               text: TextSpan(
-  //                   text: text,
-  //                   style: const TextStyle(fontSize: 12, height: 1.5)),
-  //               maxLines: 2,
-  //               textDirection: TextDirection.ltr,
-  //             )..layout(maxWidth: constraints.maxWidth);
-  //             final isOverflowing = textPainter.didExceedMaxLines;
-  //
-  //             return Column(
-  //               crossAxisAlignment: CrossAxisAlignment.start,
-  //               children: [
-  //                 Text(text,
-  //                   style: const TextStyle(color: kTextMuted, fontSize: 12, height: 1.5),
-  //                   maxLines: 2, overflow: TextOverflow.ellipsis,
-  //                 ),
-  //                 Padding(
-  //                   padding: const EdgeInsets.only(top: 8),
-  //                   child: Row(children: [
-  //                     GestureDetector(
-  //                       onTap: _handleLike,
-  //                       child: Row(children: [
-  //                         ScaleTransition(
-  //                           scale: _likeScale,
-  //                           child: Icon(
-  //                             post.isLiked
-  //                                 ? Icons.favorite_rounded
-  //                                 : Icons.favorite_border_rounded,
-  //                             size: 18,
-  //                             color: post.isLiked
-  //                                 ? const Color(0xFFEA4335)
-  //                                 : kTextMuted,
-  //                           ),
-  //                         ),
-  //                         const SizedBox(width: 4),
-  //                         Text('${post.likesCount}',
-  //                             style: TextStyle(
-  //                               fontSize: 11,
-  //                               color: post.isLiked
-  //                                   ? const Color(0xFFEA4335)
-  //                                   : kTextMuted,
-  //                             )),
-  //                       ]),
-  //                     ),
-  //                     const SizedBox(width: 16),
-  //                     GestureDetector(
-  //                       onTap: _handleComment,
-  //                       child: Row(children: [
-  //                         const Icon(Icons.chat_bubble_outline_rounded,
-  //                             size: 16, color: kTextMuted),
-  //                         const SizedBox(width: 4),
-  //                         if (!_commentsLoading)
-  //                         // Text('comment',
-  //                         //     style: const TextStyle(color: kTextMuted, fontSize: 11)),
-  //                           Text(
-  //                             '${_existingComments.length + _commentDelta}',
-  //                             style: const TextStyle(color: kTextMuted, fontSize: 11),
-  //                           ),
-  //                       ]),
-  //                     ),
-  //                     const SizedBox(width: 16),
-  //                     GestureDetector(
-  //                       onTap: _isSharing ? null : () async {
-  //                         setState(() => _isSharing = true);
-  //                         final hasImage = post.filePath != null &&
-  //                             post.filePath!.isNotEmpty &&
-  //                             post.fileType == 'image';
-  //                         try {
-  //                           if (hasImage) {
-  //                             final response =
-  //                             await http.get(Uri.parse(post.filePath!));
-  //                             final tempDir = await getTemporaryDirectory();
-  //                             final tempFile =
-  //                             File('${tempDir.path}/share_image.jpg');
-  //                             await tempFile.writeAsBytes(response.bodyBytes);
-  //                             await Share.shareXFiles(
-  //                               [XFile(tempFile.path)],
-  //                               text: '${post.title}\n\n${_stripHtml(post.content)}',
-  //                               subject: post.title,
-  //                             );
-  //                           } else {
-  //                             await Share.share(
-  //                               '${post.title}\n\n${_stripHtml(post.content)}',
-  //                               subject: post.title,
-  //                             );
-  //                           }
-  //                         } catch (_) {
-  //                           await Share.share(
-  //                             '${post.title}\n\n${_stripHtml(post.content)}',
-  //                             subject: post.title,
-  //                           );
-  //                         } finally {
-  //                           if (mounted) setState(() => _isSharing = false);
-  //                         }
-  //                       },
-  //                       child: _isSharing
-  //                           ? const SizedBox(
-  //                         width: 16, height: 16,
-  //                         child: CircularProgressIndicator(
-  //                             strokeWidth: 1.5, color: kTextMuted),
-  //                       )
-  //                           : const Icon(Icons.share_outlined,
-  //                           size: 16, color: kTextMuted),
-  //                     ),
-  //                     const Spacer(),
-  //                     if (isOverflowing)
-  //                       GestureDetector(
-  //                         onTap: () => _showFullContent(context),
-  //                         child: const Text('Read more',
-  //                             style: TextStyle(
-  //                                 color: kPurpleLight,
-  //                                 fontSize: 11,
-  //                                 fontWeight: FontWeight.w500)),
-  //                       ),
-  //                   ]),
-  //                 ),
-  //               ],
-  //             );
-  //           },
-  //         ),
-  //       ),
-  //     ]),
-  //   );
-  // }
 
   String _normalizeMediaUrl(String url) {
     if (url.startsWith('http://') || url.startsWith('https://')) return url;
@@ -830,23 +441,7 @@ class _PostCardState extends ConsumerState<PostCard>
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
                 child: Row(children: [
-                  // Container(
-                  //   width: 36, height: 36,
-                  //   decoration: const BoxDecoration(
-                  //     shape: BoxShape.circle,
-                  //     gradient: LinearGradient(
-                  //       colors: [kGold, kPurple],
-                  //       begin: Alignment.topLeft,
-                  //       end: Alignment.bottomRight,
-                  //     ),
-                  //   ),
-                  //   child: Center(
-                  //     child: Text(_initial(post.userAvatarUrl),
-                  //         style: const TextStyle(
-                  //             color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700)),
-                  //   ),
-                  // ),
-                  _PostAvatar(
+                  PostAvatar(
                     avatarUrl: post.userAvatarUrl,
                     userName: post.userName,
                   ),
@@ -884,11 +479,92 @@ class _PostCardState extends ConsumerState<PostCard>
               ),
 
               // ── Image (already loaded via Offstage) ───────────────────────────
-              _PostImageArea(
+              PostImageArea(
                 post: post,
                 isTablet: widget.isTablet,
                 onImageReady: () {}, // Already loaded, ignore
+                videoKey: _videoAreaKey, // ✅ NEW
+                // onTapVideo: () {
+                //   Navigator.push(
+                //     context,
+                //     MaterialPageRoute(builder: (_) => PostDetailScreen(post: post)), // PostDetailScreen(post: post)
+                //   );
+                // },
+
+
+
+
+                // onTapVideo: () async {
+                //   if (_isNavigatingToReel) return; // ✅ NEW — pop ke baad turant dobara na khule
+                //   _isNavigatingToReel = true;
+                //
+                //   // ✅ Reel open karne se pehle preview pause karo
+                //   _videoAreaKey.currentState?.pauseForNavigation();
+                //
+                //   await Navigator.push(
+                //     context,
+                //     MaterialPageRoute(
+                //       builder: (_) => PostDetailScreen(initialPostId: post.id), // ✅ CHANGED — neeche dekho kyu
+                //     ),
+                //   );
+                //
+                //   // ✅ Wapas aate hi wahi se resume karo — restart nahi
+                //   if (mounted) {
+                //     _videoAreaKey.currentState?.resumeForNavigation();
+                //   }
+                //
+                //   // ✅ NEW — thoda delay taaki back-gesture ka stray tap ignore ho jaye
+                //   await Future.delayed(const Duration(milliseconds: 400));
+                //   if (mounted) _isNavigatingToReel = false;
+                // },
+
+
+
+                onTapVideo: () async {
+                  if (_isNavigatingToReel) return;
+                  _isNavigatingToReel = true;
+
+                  _videoAreaKey.currentState?.pauseForNavigation();
+
+                  ReelNavGuard.skipNextAutoRefresh = true; // ✅ NEW — HomeScreen ko batao refresh skip karo
+
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => PostDetailScreen(initialPostId: post.id),
+                    ),
+                  );
+
+                  if (mounted) {
+                    _videoAreaKey.currentState?.resumeForNavigation();
+                  }
+
+                  await Future.delayed(const Duration(milliseconds: 400));
+                  if (mounted) _isNavigatingToReel = false;
+                },
               ),
+
+              // ── Image (already loaded via Offstage) ───────────────────────────
+              // IgnorePointer(
+              //   ignoring: _blockVideoTap, // ✅ NEW — pop ke turant baad touch hi block
+              //   child: PostImageArea(
+              //     post: post,
+              //     isTablet: widget.isTablet,
+              //     onImageReady: () {},
+              //     onTapVideo: () async {
+              //       Navigator.push(
+              //         context,
+              //         MaterialPageRoute(builder: (_) => PostDetailScreen(initialPostId: post.id)),
+              //       ).then((_) async {
+              //         // ✅ NEW — pop hote hi turant block karo, phir kuch der baad unblock
+              //         if (!mounted) return;
+              //         setState(() => _blockVideoTap = true);
+              //         await Future.delayed(const Duration(milliseconds: 500));
+              //         if (mounted) setState(() => _blockVideoTap = false);
+              //       });
+              //     },
+              //   ),
+              // ),
 
               // ── Title ────────────────────────────────────────────────────────────
               Padding(
@@ -968,39 +644,7 @@ class _PostCardState extends ConsumerState<PostCard>
                             ),
                             const SizedBox(width: 16),
                             GestureDetector(
-                              // onTap: _isSharing ? null : () async {
-                              //   setState(() => _isSharing = true);
-                              //   final hasImage = post.filePath != null &&
-                              //       post.filePath!.isNotEmpty &&
-                              //       post.fileType == 'image';
-                              //   try {
-                              //     if (hasImage) {
-                              //       final response =
-                              //       await http.get(Uri.parse(post.filePath!));
-                              //       final tempDir = await getTemporaryDirectory();
-                              //       final tempFile =
-                              //       File('${tempDir.path}/share_image.jpg');
-                              //       await tempFile.writeAsBytes(response.bodyBytes);
-                              //       await Share.shareXFiles(
-                              //         [XFile(tempFile.path)],
-                              //         text: '${post.title}\n\n${_stripHtml(post.content)}',
-                              //         subject: post.title,
-                              //       );
-                              //     } else {
-                              //       await Share.share(
-                              //         '${post.title}\n\n${_stripHtml(post.content)}',
-                              //         subject: post.title,
-                              //       );
-                              //     }
-                              //   } catch (_) {
-                              //     await Share.share(
-                              //       '${post.title}\n\n${_stripHtml(post.content)}',
-                              //       subject: post.title,
-                              //     );
-                              //   } finally {
-                              //     if (mounted) setState(() => _isSharing = false);
-                              //   }
-                              // },
+
                               onTap: _isSharing ? null : () async {
                                 setState(() => _isSharing = true);
 
@@ -1105,8 +749,8 @@ class _PostCardState extends ConsumerState<PostCard>
 }
 
 // ─── Post header avatar — image agar present, warna initials fallback ─────────
-class _PostAvatar extends StatelessWidget {
-  const _PostAvatar({required this.avatarUrl, required this.userName});
+class PostAvatar extends StatelessWidget {
+  const PostAvatar({required this.avatarUrl, required this.userName});
 
   final String? avatarUrl;
   final String  userName;
@@ -1155,613 +799,6 @@ class _PostAvatar extends StatelessWidget {
     );
   }
 }
-
-
-// class PostCard extends ConsumerStatefulWidget {
-//   final GetPost post;
-//   final bool    isTablet;
-//
-//   // ✅ onLikeTap callback hata diya — ab internally ViewModel call hota hai
-//   const PostCard({required this.post, required this.isTablet, super.key});
-//
-//   @override
-//   ConsumerState<PostCard> createState() => _PostCardState();
-// }
-//
-// class _PostCardState extends ConsumerState<PostCard>
-//     with SingleTickerProviderStateMixin {
-//   late AnimationController _likeCtrl;
-//   late Animation<double>   _likeScale;
-//   bool _isSharing = false;
-//
-//   bool _imageReady = false;
-//   bool _imageFailed = false;
-//
-//   @override
-//   void initState() {
-//     super.initState();
-//     _likeCtrl = AnimationController(
-//         vsync: this, duration: const Duration(milliseconds: 200));
-//     _likeScale = TweenSequence([
-//       TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.4), weight: 50),
-//       TweenSequenceItem(tween: Tween(begin: 1.4, end: 1.0), weight: 50),
-//     ]).animate(CurvedAnimation(parent: _likeCtrl, curve: Curves.easeInOut));
-//   }
-//
-//   @override
-//   void dispose() {
-//     _likeCtrl.dispose();
-//     super.dispose();
-//   }
-//
-//   // ── Like handler ─────────────────────────────────────────────────────────
-//   // ✅ Animation play karo + ViewModel ka real API call karo
-//   Future<void> _handleLike() async {
-//     _likeCtrl.forward(from: 0);  // bounce animation
-//
-//     final error = await ref
-//         .read(getPostViewModelProvider.notifier)
-//         .toggleLike(widget.post.id);
-//
-//     if (error != null && mounted) {
-//       ScaffoldMessenger.of(context).showSnackBar(
-//         SnackBar(
-//           content:         Text(error),
-//           backgroundColor: const Color(0xFFEF4444),
-//         ),
-//       );
-//     }
-//   }
-//
-//   // ── Comment handler ───────────────────────────────────────────────────────
-//   // ✅ CommentBottomSheet open karo
-//   void _handleComment() {
-//     showCommentSheet(context, ref, widget.post);
-//   }
-//
-//   // ── More menu handler (owner only) ────────────────────────────────────────
-//   // ✅ Edit ya Delete choose karo
-//   void _showMoreMenu(BuildContext context) {
-//     showModalBottomSheet(
-//       context:         context,
-//       backgroundColor: Colors.transparent,
-//       builder:         (_) => _OwnerActionsSheet(
-//         post: widget.post,
-//         ref:  ref,
-//       ),
-//     );
-//   }
-//
-//   // ── Full content sheet ────────────────────────────────────────────────────
-//   // void _showFullContent(BuildContext context) {
-//   //   showModalBottomSheet(
-//   //     context:            context,
-//   //     backgroundColor:    Colors.transparent,
-//   //     isScrollControlled: true,
-//   //     builder: (_) => DraggableScrollableSheet(
-//   //       initialChildSize: 0.75,
-//   //       minChildSize:     0.4,
-//   //       maxChildSize:     0.95,
-//   //       builder: (_, scrollCtrl) => Container(
-//   //         padding: const EdgeInsets.all(20),
-//   //         decoration: const BoxDecoration(
-//   //           color:        kBgCard,
-//   //           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-//   //         ),
-//   //         child: SingleChildScrollView(
-//   //           controller: scrollCtrl,
-//   //           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-//   //             Center(
-//   //               child: Container(
-//   //                 width: 36, height: 4, margin: const EdgeInsets.only(bottom: 16),
-//   //                 decoration: BoxDecoration(
-//   //                     color: kTextMuted, borderRadius: BorderRadius.circular(2)),
-//   //               ),
-//   //             ),
-//   //             Text(widget.post.title,
-//   //                 style: const TextStyle(
-//   //                     color: kTextPrimary, fontSize: 16, fontWeight: FontWeight.w700)),
-//   //             const SizedBox(height: 12),
-//   //             Text(_stripHtml(widget.post.content),
-//   //                 style: const TextStyle(color: kTextMuted, fontSize: 13, height: 1.6)),
-//   //           ]),
-//   //         ),
-//   //       ),
-//   //     ),
-//   //   );
-//   // }
-//
-//   // void _showFullContent(BuildContext context) {
-//   //   showModalBottomSheet(
-//   //     context: context,
-//   //     backgroundColor: Colors.transparent,
-//   //     isScrollControlled: true,
-//   //     builder: (_) => DraggableScrollableSheet(
-//   //       initialChildSize: 0.75,
-//   //       minChildSize: 0.4,
-//   //       maxChildSize: 0.95,
-//   //       builder: (_, scrollCtrl) => Container(
-//   //         decoration: const BoxDecoration(
-//   //           color: kBgCard,
-//   //           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-//   //         ),
-//   //         child: Column(children: [
-//   //           // Drag handle
-//   //           Container(
-//   //             width: 36, height: 4,
-//   //             margin: const EdgeInsets.symmetric(vertical: 12),
-//   //             decoration: BoxDecoration(color: kTextMuted, borderRadius: BorderRadius.circular(2)),
-//   //           ),
-//   //           // Category + title header
-//   //           Padding(
-//   //             padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-//   //             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-//   //               Container(
-//   //                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-//   //                 decoration: BoxDecoration(
-//   //                   color: _categoryColor(widget.post.category).withOpacity(0.12),
-//   //                   borderRadius: BorderRadius.circular(20),
-//   //                   border: Border.all(color: _categoryColor(widget.post.category).withOpacity(0.5)),
-//   //                 ),
-//   //                 child: Text(widget.post.category, style: TextStyle(
-//   //                   color: _categoryColor(widget.post.category),
-//   //                   fontSize: 10, fontWeight: FontWeight.w700,
-//   //                 )),
-//   //               ),
-//   //               const SizedBox(height: 10),
-//   //               Text(widget.post.title, style: const TextStyle(
-//   //                 color: kTextPrimary, fontSize: 16, fontWeight: FontWeight.w800, height: 1.4,
-//   //               )),
-//   //               const SizedBox(height: 6),
-//   //               Text(_timeAgo(widget.post.createdAt),
-//   //                   style: const TextStyle(color: kTextMuted, fontSize: 11)),
-//   //             ]),
-//   //           ),
-//   //           const Divider(color: kBorder, height: 1),
-//   //           // ✅ CHANGE #4 — Scrollable full content text
-//   //           Expanded(
-//   //             child: SingleChildScrollView(
-//   //               controller: scrollCtrl,
-//   //               padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-//   //               child: Text(
-//   //                 parseHtmlString(widget.post.content),
-//   //                 // widget.post.content,
-//   //                 style: const TextStyle(
-//   //                   color: kTextMuted, fontSize: 14, height: 1.7,
-//   //                 ),
-//   //               ),
-//   //             ),
-//   //           ),
-//   //         ]),
-//   //       ),
-//   //     ),
-//   //   );
-//   // }
-//
-//
-//
-//   void _showFullContent(BuildContext context) {
-//     showModalBottomSheet(
-//       context: context,
-//       backgroundColor: Colors.transparent,
-//       isScrollControlled: true,
-//       builder: (_) => DraggableScrollableSheet(
-//         initialChildSize: 0.75,
-//         minChildSize: 0.4,
-//         maxChildSize: 0.95,
-//         builder: (_, scrollCtrl) => Container(
-//           decoration: const BoxDecoration(
-//             color: kBgCard,
-//             borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-//           ),
-//           child: Column(children: [
-//
-//             // ── Drag handle ─────────────────────────────────────────────
-//             Container(
-//               width: 36, height: 4,
-//               margin: const EdgeInsets.symmetric(vertical: 12),
-//               decoration: BoxDecoration(
-//                   color: kTextMuted, borderRadius: BorderRadius.circular(2)),
-//             ),
-//
-//             // ── Category + Title + Time header ───────────────────────────
-//             Padding(
-//               padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-//               child: Column(
-//                 crossAxisAlignment: CrossAxisAlignment.stretch,
-//                 children: [
-//
-//                   // ✅ Badge sirf apni size lega — full width nahi
-//                   Align(
-//                     alignment: Alignment.centerLeft,
-//                     child: Container(
-//                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-//                       decoration: BoxDecoration(
-//                         color: categoryColor(widget.post.category).withOpacity(0.12),
-//                         borderRadius: BorderRadius.circular(20),
-//                         border: Border.all(
-//                             color: categoryColor(widget.post.category).withOpacity(0.5)),
-//                       ),
-//                       child: Text(widget.post.category,
-//                           style: TextStyle(
-//                             color: categoryColor(widget.post.category),
-//                             fontSize: 10,
-//                             fontWeight: FontWeight.w700,
-//                           )),
-//                     ),
-//                   ),
-//
-//                   const SizedBox(height: 10),
-//
-//                   // ✅ Title — full width stretch
-//                   Text(widget.post.title,
-//                       style: const TextStyle(
-//                         color: kTextPrimary,
-//                         fontSize: 16,
-//                         fontWeight: FontWeight.w800,
-//                         height: 1.4,
-//                       )),
-//
-//                   const SizedBox(height: 6),
-//
-//                   // ✅ Time — full width stretch
-//                   Text(_timeAgo(widget.post.createdAt),
-//                       style: const TextStyle(color: kTextMuted, fontSize: 11)),
-//                 ],
-//               ),
-//             ),
-//
-//             const Divider(color: kBorder, height: 1),
-//
-//             // ── Scrollable full content ──────────────────────────────────
-//             Expanded(
-//               child: SingleChildScrollView(
-//                 controller: scrollCtrl,
-//                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-//                 child: Text(
-//                   parseHtmlString(widget.post.content),
-//                   style: const TextStyle(
-//                     color: kTextMuted,
-//                     fontSize: 14,
-//                     height: 1.7,
-//                   ),
-//                 ),
-//               ),
-//             ),
-//           ]),
-//         ),
-//       ),
-//     );
-//   }
-//
-//   String _stripHtml(String html) => parse(html).body?.text ?? '';
-//
-//   String _timeAgo(DateTime dt) {
-//     final diff = DateTime.now().difference(dt);
-//     if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-//     if (diff.inHours   < 24) return '${diff.inHours}h ago';
-//     if (diff.inDays    < 7)  return '${diff.inDays}d ago';
-//     return '${dt.day}/${dt.month}/${dt.year}';
-//   }
-//
-//   String _initial(String name) => name.isNotEmpty ? name[0].toUpperCase() : '?';
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     final post     = widget.post;
-//     final catColor = categoryColor(post.category);
-//
-//     return Container(
-//       margin: widget.isTablet ? EdgeInsets.zero : const EdgeInsets.only(bottom: 8),
-//       decoration: BoxDecoration(
-//         color:        kBgCard,
-//         borderRadius: widget.isTablet ? BorderRadius.circular(14) : null,
-//         border: widget.isTablet
-//             ? Border.all(color: kBorder, width: 0.5)
-//             : const Border(bottom: BorderSide(color: kBorder, width: 0.5)),
-//       ),
-//       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-//
-//         // ── Header ──────────────────────────────────────────────────────────
-//         Padding(
-//           padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
-//           child: Row(children: [
-//             // Avatar
-//             Container(
-//               width: 36, height: 36,
-//               decoration: const BoxDecoration(
-//                 shape: BoxShape.circle,
-//                 gradient: LinearGradient(
-//                   colors: [kGold, kPurple],
-//                   begin:  Alignment.topLeft,
-//                   end:    Alignment.bottomRight,
-//                 ),
-//               ),
-//               child: Center(
-//                 child: Text(_initial(post.userName),
-//                     style: const TextStyle(
-//                         color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700)),
-//               ),
-//             ),
-//             const SizedBox(width: 10),
-//             Expanded(
-//               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-//                 Text(post.userName,
-//                     style: const TextStyle(
-//                         color: kGold, fontSize: 12, fontWeight: FontWeight.w600)),
-//                 Text(_timeAgo(post.createdAt),
-//                     style: const TextStyle(color: kTextMuted, fontSize: 10)),
-//               ]),
-//             ),
-//             // Category badge
-//             Container(
-//               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-//               decoration: BoxDecoration(
-//                 color:        catColor.withOpacity(0.12),
-//                 borderRadius: BorderRadius.circular(20),
-//                 border:       Border.all(color: catColor.withOpacity(0.5), width: 0.8),
-//               ),
-//               child: Text(post.category,
-//                   style: TextStyle(
-//                       color: catColor, fontSize: 9.5, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
-//             ),
-//             const SizedBox(width: 8),
-//
-//             // ✅ More menu — sirf owner ko dikhao
-//             if (post.isOwner)
-//               GestureDetector(
-//                 onTap: () => _showMoreMenu(context),
-//                 child: const Icon(Icons.more_horiz_rounded,
-//                     color: kPurpleLight, size: 20),
-//               )
-//             else
-//               const SizedBox(width: 20), // spacing maintain karo
-//           ]),
-//         ),
-//
-//         // ── Image area ───────────────────────────────────────────────────────
-//         _PostImageArea(post: post, isTablet: widget.isTablet),
-//
-//         // ── Title ────────────────────────────────────────────────────────────
-//         Padding(
-//           padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
-//           child: Text(post.title,
-//             style: const TextStyle(
-//                 color: kTextPrimary, fontSize: 13, fontWeight: FontWeight.w700, height: 1.4),
-//             maxLines: widget.isTablet ? 3 : 2,
-//             overflow: TextOverflow.ellipsis,
-//           ),
-//         ),
-//
-//         // // ── Content preview ───────────────────────────────────────────────────
-//         // Padding(
-//         //   padding: const EdgeInsets.fromLTRB(12, 2, 12, 6),
-//         //   child: Text(
-//         //     _stripHtml(post.content),
-//         //     style: const TextStyle(color: kTextMuted, fontSize: 12, height: 1.5),
-//         //     maxLines: 2,
-//         //     overflow: TextOverflow.ellipsis,
-//         //   ),
-//         // ),
-//         //
-//         // // ── Actions row ───────────────────────────────────────────────────────
-//         // Padding(
-//         //   padding: const EdgeInsets.fromLTRB(12, 4, 12, 10),
-//         //   child: Row(children: [
-//         //
-//         //     // ✅ Like button (animation + real API)
-//         //     GestureDetector(
-//         //       onTap: _handleLike,
-//         //       child: Row(children: [
-//         //         ScaleTransition(
-//         //           scale: _likeScale,
-//         //           child: Icon(
-//         //             post.isLiked
-//         //                 ? Icons.favorite_rounded
-//         //                 : Icons.favorite_border_rounded,
-//         //             size:  18,
-//         //             color: post.isLiked
-//         //                 ? const Color(0xFFEA4335)
-//         //                 : kTextMuted,
-//         //           ),
-//         //         ),
-//         //         const SizedBox(width: 4),
-//         //         Text('${post.likesCount}',
-//         //             style: TextStyle(
-//         //               fontSize: 11,
-//         //               color: post.isLiked ? const Color(0xFFEA4335) : kTextMuted,
-//         //             )),
-//         //       ]),
-//         //     ),
-//         //
-//         //     const SizedBox(width: 16),
-//         //
-//         //     // ✅ Comment button (opens CommentBottomSheet)
-//         //     GestureDetector(
-//         //       onTap: _handleComment,
-//         //       child: const Row(children: [
-//         //         Icon(Icons.chat_bubble_outline_rounded, size: 16, color: kTextMuted),
-//         //         SizedBox(width: 4),
-//         //         Text('Comment',
-//         //             style: TextStyle(color: kTextMuted, fontSize: 11)),
-//         //       ]),
-//         //     ),
-//         //
-//         //     const SizedBox(width: 16),
-//         //
-//         //     // Share
-//         //     GestureDetector(
-//         //       onTap: () => Share.share(
-//         //         '${post.title}\n\n${_stripHtml(post.content)}',
-//         //         subject: post.title,
-//         //       ),
-//         //       child: const Icon(Icons.share_outlined, size: 16, color: kTextMuted),
-//         //     ),
-//         //
-//         //     const Spacer(),
-//         //
-//         //     // Read more
-//         //     GestureDetector(
-//         //       onTap: () => _showFullContent(context),
-//         //       child: const Text('Read more',
-//         //           style: TextStyle(
-//         //               color: kPurpleLight, fontSize: 11, fontWeight: FontWeight.w500)),
-//         //     ),
-//         //   ]),
-//         // ),
-//
-//         // ── Content preview + Read more (conditional) ─────────────────────────────
-//         Padding(
-//           padding: const EdgeInsets.fromLTRB(12, 2, 12, 6),
-//           child: LayoutBuilder(
-//             builder: (context, constraints) {
-//               final text = _stripHtml(post.content);
-//
-//               // ✅ Check karo ki text 2 lines se zyada hai ya nahi
-//               final textPainter = TextPainter(
-//                 text: TextSpan(
-//                   text: text,
-//                   style: const TextStyle(fontSize: 12, height: 1.5),
-//                 ),
-//                 maxLines:        2,
-//                 textDirection:   TextDirection.ltr,
-//               )..layout(maxWidth: constraints.maxWidth);
-//
-//               final isOverflowing = textPainter.didExceedMaxLines;
-//
-//               return Column(
-//                 crossAxisAlignment: CrossAxisAlignment.start,
-//                 children: [
-//                   Text(
-//                     text,
-//                     style: const TextStyle(color: kTextMuted, fontSize: 12, height: 1.5),
-//                     maxLines: 2,
-//                     overflow: TextOverflow.ellipsis,
-//                   ),
-//
-//                   // ── Actions row ───────────────────────────────────────────────
-//                   Padding(
-//                     padding: const EdgeInsets.only(top: 8),
-//                     child: Row(children: [
-//
-//                       // Like button
-//                       GestureDetector(
-//                         onTap: _handleLike,
-//                         child: Row(children: [
-//                           ScaleTransition(
-//                             scale: _likeScale,
-//                             child: Icon(
-//                               post.isLiked
-//                                   ? Icons.favorite_rounded
-//                                   : Icons.favorite_border_rounded,
-//                               size:  18,
-//                               color: post.isLiked ? const Color(0xFFEA4335) : kTextMuted,
-//                             ),
-//                           ),
-//                           const SizedBox(width: 4),
-//                           Text('${post.likesCount}',
-//                               style: TextStyle(
-//                                 fontSize: 11,
-//                                 color: post.isLiked ? const Color(0xFFEA4335) : kTextMuted,
-//                               )),
-//                         ]),
-//                       ),
-//
-//                       const SizedBox(width: 16),
-//
-//                       // Comment button
-//                       GestureDetector(
-//                         onTap: _handleComment,
-//                         child: const Row(children: [
-//                           Icon(Icons.chat_bubble_outline_rounded, size: 16, color: kTextMuted),
-//                           SizedBox(width: 4),
-//                           Text('Comment', style: TextStyle(color: kTextMuted, fontSize: 11)),
-//                         ]),
-//                       ),
-//
-//                       const SizedBox(width: 16),
-//
-//                       // Share
-//                       // GestureDetector(
-//                       //   onTap: () => Share.share(
-//                       //     '${post.title}\n\n${_stripHtml(post.content)}',
-//                       //     subject: post.title,
-//                       //   ),
-//                       //   child: const Icon(Icons.share_outlined, size: 16, color: kTextMuted),
-//                       // ),
-//
-//                       // Share
-//                       // Share
-//                       GestureDetector(
-//                         onTap: _isSharing ? null : () async {
-//                           setState(() => _isSharing = true);
-//
-//                           final hasImage = post.filePath != null &&
-//                               post.filePath!.isNotEmpty &&
-//                               post.fileType == 'image';
-//
-//                           try {
-//                             if (hasImage) {
-//                               final response = await http.get(Uri.parse(post.filePath!));
-//                               final tempDir  = await getTemporaryDirectory();
-//                               final tempFile = File('${tempDir.path}/share_image.jpg');
-//                               await tempFile.writeAsBytes(response.bodyBytes);
-//
-//                               await Share.shareXFiles(
-//                                 [XFile(tempFile.path)],
-//                                 text:    '${post.title}\n\n${_stripHtml(post.content)}',
-//                                 subject: post.title,
-//                               );
-//                             } else {
-//                               await Share.share(
-//                                 '${post.title}\n\n${_stripHtml(post.content)}',
-//                                 subject: post.title,
-//                               );
-//                             }
-//                           } catch (_) {
-//                             await Share.share(
-//                               '${post.title}\n\n${_stripHtml(post.content)}',
-//                               subject: post.title,
-//                             );
-//                           } finally {
-//                             if (mounted) setState(() => _isSharing = false);
-//                           }
-//                         },
-//                         child: _isSharing
-//                             ? const SizedBox(
-//                           width:  16,
-//                           height: 16,
-//                           child:  CircularProgressIndicator(
-//                             strokeWidth: 1.5,
-//                             color:       kTextMuted,
-//                           ),
-//                         )
-//                             : const Icon(Icons.share_outlined, size: 16, color: kTextMuted),
-//                       ),
-//
-//                       const Spacer(),
-//
-//                       // ✅ Read more — sirf tab dikhao jab text overflow ho
-//                       if (isOverflowing)
-//                         GestureDetector(
-//                           onTap: () => _showFullContent(context),
-//                           child: const Text('Read more',
-//                               style: TextStyle(
-//                                   color: kPurpleLight, fontSize: 11, fontWeight: FontWeight.w500)),
-//                         ),
-//                     ]),
-//                   ),
-//                 ],
-//               );
-//             },
-//           ),
-//         ),
-//       ]),
-//     );
-//   }
-// }
-
-
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  OWNER ACTIONS SHEET (Edit / Delete)
@@ -1832,63 +869,6 @@ class _OwnerActionsSheet extends StatelessWidget {
       );
     }
   }
-
-  // Future<void> _confirmDelete(BuildContext ctx) async {
-  //   // ✅ PEHLE dialog dikhao
-  //   final confirmed = await showDialog<bool>(
-  //     context: ctx,
-  //     builder: (dialogCtx) => AlertDialog(
-  //       backgroundColor: kBgCard,
-  //       shape: RoundedRectangleBorder(
-  //           borderRadius: BorderRadius.circular(16),
-  //           side: const BorderSide(color: kBorder)),
-  //       title: const Text('Delete Post',
-  //           style: TextStyle(color: kTextPrimary, fontSize: 16, fontWeight: FontWeight.w700)),
-  //       content: Text(
-  //         'Are you sure you want to delete "${post.title}"? This cannot be undone.',
-  //         style: const TextStyle(color: kTextMuted, fontSize: 13, height: 1.5),
-  //       ),
-  //       actions: [
-  //         TextButton(
-  //           onPressed: () => Navigator.pop(dialogCtx, false),
-  //           child: const Text('Cancel', style: TextStyle(color: kTextMuted)),
-  //         ),
-  //         TextButton(
-  //           onPressed: () => Navigator.pop(dialogCtx, true),
-  //           child: const Text('Delete',
-  //               style: TextStyle(color: Color(0xFFEF4444), fontWeight: FontWeight.w700)),
-  //         ),
-  //       ],
-  //     ),
-  //   );
-  //
-  //   if (confirmed != true || !ctx.mounted) return;
-  //
-  //   // ✅ PHIR sheet band karo
-  //   Navigator.pop(ctx);
-  //
-  //   final error = await ref
-  //       .read(getPostViewModelProvider.notifier)
-  //       .deletePost(post.id);
-  //
-  //   if (!ctx.mounted) return;
-  //
-  //   if (error == null) {
-  //     ScaffoldMessenger.of(ctx).showSnackBar(
-  //       const SnackBar(
-  //         content:         Text('Post deleted successfully.'),
-  //         backgroundColor: Color(0xFF22C55E),
-  //       ),
-  //     );
-  //   } else {
-  //     ScaffoldMessenger.of(ctx).showSnackBar(
-  //       SnackBar(
-  //         content:         Text('Delete failed: $error'),
-  //         backgroundColor: const Color(0xFFEF4444),
-  //       ),
-  //     );
-  //   }
-  // }
 
   @override
   Widget build(BuildContext context) {
@@ -2020,13 +1000,6 @@ class _CardSkeletonState extends State<_CardSkeleton>
     _preloadImage();
   }
 
-  // void _preloadImage() {
-  //   final hasImage = widget.post.filePath != null &&
-  //       widget.post.filePath!.isNotEmpty &&
-  //       widget.post.fileType == 'image';
-  //
-  //   if (!hasImage) return; // No image — should not reach here
-  // }
 
   void _preloadImage() {
     final hasMedia = widget.post.filePath != null &&
@@ -2159,80 +1132,162 @@ class _SlidingGradientTransform extends GradientTransform {
 }
 
 // ─── Post Image Area (unchanged from original) ────────────────────────────────
-class _PostImageArea extends StatefulWidget {
+class PostImageArea extends StatefulWidget {
   final GetPost post;
   final bool isTablet;
   final VoidCallback onImageReady; // ✅ NEW
+  final VoidCallback? onTapVideo;
+  final Key? videoKey; // ✅ NEW
 
-  const _PostImageArea({
+  const PostImageArea({
     required this.post,
     required this.isTablet,
     required this.onImageReady, // ✅ NEW
+    this.onTapVideo, // ✅ NEW
+    this.videoKey, // ✅ NEW
   });
 
   @override
-  State<_PostImageArea> createState() => _PostImageAreaState();
+  State<PostImageArea> createState() => _PostImageAreaState();
 }
 
-class _PostImageAreaState extends State<_PostImageArea> {
-  // @override
-  // Widget build(BuildContext context) {
-  //   final catColor = categoryColor(widget.post.category);
-  //   final hasImage = widget.post.filePath != null &&
-  //       widget.post.filePath!.isNotEmpty &&
-  //       widget.post.fileType == 'image';
-  //
-  //   if (hasImage) {
-  //     return Stack(children: [
-  //       CachedNetworkImage(
-  //         imageUrl: widget.post.filePath!,
-  //         width: double.infinity,
-  //         fit: BoxFit.contain,
-  //         // ✅ Image load ho gayi → parent ko notify karo
-  //         imageBuilder: (context, imageProvider) {
-  //           WidgetsBinding.instance.addPostFrameCallback((_) {
-  //             if (mounted) widget.onImageReady();
-  //           });
-  //           return Image(
-  //               image: imageProvider,
-  //               fit: BoxFit.contain,
-  //               width: double.infinity);
-  //         },
-  //         placeholder: (context, url) => const SizedBox.shrink(),
-  //         errorWidget: (context, url, error) {
-  //           // Error pe bhi ready karo — fallback dikhao
-  //           WidgetsBinding.instance.addPostFrameCallback((_) {
-  //             if (mounted) widget.onImageReady();
-  //           });
-  //           return _chartFallback(catColor);
-  //         },
-  //       ),
-  //       if (widget.post.isOwner)
-  //         Positioned(
-  //           top: 8, right: 10,
-  //           child: Container(
-  //             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-  //             decoration: BoxDecoration(
-  //               color: kPurple.withOpacity(0.8),
-  //               borderRadius: BorderRadius.circular(3),
-  //             ),
-  //             child: const Text('MY POST', style: TextStyle(
-  //               color: Colors.white, fontSize: 8,
-  //               fontWeight: FontWeight.w700, letterSpacing: 1,
-  //             )),
-  //           ),
-  //         ),
-  //     ]);
-  //   }
-  //
-  //   return _chartFallback(catColor);
-  // }
+// class _PostImageAreaState extends State<_PostImageArea> {
+//
+//   // ✅ Backend kabhi kabhi scheme-less URL bhejta he (video ke liye) — fix karo
+//   String _normalizeMediaUrl(String url) {
+//     if (url.startsWith('http://') || url.startsWith('https://')) return url;
+//     return 'https://$url';
+//   }
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     final catColor = categoryColor(widget.post.category);
+//     final hasImage = widget.post.filePath != null &&
+//         widget.post.filePath!.isNotEmpty &&
+//         widget.post.fileType == 'image';
+//     final hasVideo = widget.post.filePath != null && // ✅ NEW
+//         widget.post.filePath!.isNotEmpty &&
+//         widget.post.fileType == 'video';
+//
+//     if (hasImage) {
+//       return Stack(children: [
+//         CachedNetworkImage(
+//           imageUrl: widget.post.filePath!,
+//           width: double.infinity,
+//           fit: BoxFit.contain,
+//           imageBuilder: (context, imageProvider) {
+//             WidgetsBinding.instance.addPostFrameCallback((_) {
+//               if (mounted) widget.onImageReady();
+//             });
+//             return Image(
+//                 image: imageProvider,
+//                 fit: BoxFit.contain,
+//                 width: double.infinity);
+//           },
+//           placeholder: (context, url) => const SizedBox.shrink(),
+//           errorWidget: (context, url, error) {
+//             WidgetsBinding.instance.addPostFrameCallback((_) {
+//               if (mounted) widget.onImageReady();
+//             });
+//             return _chartFallback(catColor);
+//           },
+//         ),
+//         if (widget.post.isOwner)
+//           Positioned(
+//             top: 8, right: 10,
+//             child: Container(
+//               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+//               decoration: BoxDecoration(
+//                 color: kPurple.withOpacity(0.8),
+//                 borderRadius: BorderRadius.circular(3),
+//               ),
+//               child: const Text('MY POST', style: TextStyle(
+//                 color: Colors.white, fontSize: 8,
+//                 fontWeight: FontWeight.w700, letterSpacing: 1,
+//               )),
+//             ),
+//           ),
+//       ]);
+//     }
+//
+//     // ✅ NEW — Video post
+//     if (hasVideo) {
+//       return Stack(children: [
+//         _PostVideoArea(
+//           videoUrl: _normalizeMediaUrl(widget.post.filePath!), // ✅ scheme fix
+//           isTablet: widget.isTablet,
+//           onReady: widget.onImageReady, // same callback reuse karo
+//         ),
+//         if (widget.post.isOwner)
+//           Positioned(
+//             top: 8, right: 10,
+//             child: Container(
+//               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+//               decoration: BoxDecoration(
+//                 color: kPurple.withOpacity(0.8),
+//                 borderRadius: BorderRadius.circular(3),
+//               ),
+//               child: const Text('MY POST', style: TextStyle(
+//                 color: Colors.white, fontSize: 8,
+//                 fontWeight: FontWeight.w700, letterSpacing: 1,
+//               )),
+//             ),
+//           ),
+//       ]);
+//     }
+//
+//     return _chartFallback(catColor);
+//   }
+//
+//   Widget _chartFallback(Color catColor) {
+//     return SizedBox(
+//       height: widget.isTablet ? 140 : 160,
+//       width: double.infinity,
+//       child: Stack(fit: StackFit.expand, children: [
+//         Container(color: const Color(0xFF0A0118)),
+//         Center(
+//           child: Container(
+//             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+//             decoration: BoxDecoration(
+//               color: Colors.black.withOpacity(0.45),
+//               borderRadius: BorderRadius.circular(8),
+//               border: Border.all(color: catColor.withOpacity(0.4), width: 0.8),
+//             ),
+//             child: Text(widget.post.category.toUpperCase(),
+//                 style: TextStyle(
+//                     color: catColor, fontSize: 18,
+//                     fontWeight: FontWeight.w900, letterSpacing: 3)),
+//           ),
+//         ),
+//         if (widget.post.isOwner)
+//           Positioned(
+//             top: 8, right: 10,
+//             child: Container(
+//               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+//               decoration: BoxDecoration(
+//                 color: kPurple.withOpacity(0.8),
+//                 borderRadius: BorderRadius.circular(3),
+//               ),
+//               child: const Text('MY POST', style: TextStyle(
+//                 color: Colors.white, fontSize: 8,
+//                 fontWeight: FontWeight.w700, letterSpacing: 1,
+//               )),
+//             ),
+//           ),
+//       ]),
+//     );
+//   }
+// }
 
-  // ✅ Backend kabhi kabhi scheme-less URL bhejta he (video ke liye) — fix karo
+class _PostImageAreaState extends State<PostImageArea> {
+
   String _normalizeMediaUrl(String url) {
     if (url.startsWith('http://') || url.startsWith('https://')) return url;
     return 'https://$url';
   }
+
+  // ✅ NEW — video jaisi hi fixed height, consistent layout
+  double get _imageHeight => widget.isTablet ? 260 : 400;
 
   @override
   Widget build(BuildContext context) {
@@ -2240,58 +1295,69 @@ class _PostImageAreaState extends State<_PostImageArea> {
     final hasImage = widget.post.filePath != null &&
         widget.post.filePath!.isNotEmpty &&
         widget.post.fileType == 'image';
-    final hasVideo = widget.post.filePath != null && // ✅ NEW
+    final hasVideo = widget.post.filePath != null &&
         widget.post.filePath!.isNotEmpty &&
         widget.post.fileType == 'video';
 
     if (hasImage) {
-      return Stack(children: [
-        CachedNetworkImage(
-          imageUrl: widget.post.filePath!,
-          width: double.infinity,
-          fit: BoxFit.contain,
-          imageBuilder: (context, imageProvider) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted) widget.onImageReady();
-            });
-            return Image(
+      return Container(
+        height: _imageHeight,
+        width: double.infinity,
+        color: const Color(0xFF000000), // ✅ black background — bars yahi dikhenge
+        child: Stack(alignment: Alignment.center, children: [
+          CachedNetworkImage(
+            imageUrl: widget.post.filePath!,
+            fit: BoxFit.contain, // ✅ poora image dikhega, crop nahi hoga
+            width: double.infinity,
+            height: _imageHeight,
+            imageBuilder: (context, imageProvider) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) widget.onImageReady();
+              });
+              return Image(
                 image: imageProvider,
                 fit: BoxFit.contain,
-                width: double.infinity);
-          },
-          placeholder: (context, url) => const SizedBox.shrink(),
-          errorWidget: (context, url, error) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted) widget.onImageReady();
-            });
-            return _chartFallback(catColor);
-          },
-        ),
-        if (widget.post.isOwner)
-          Positioned(
-            top: 8, right: 10,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: kPurple.withOpacity(0.8),
-                borderRadius: BorderRadius.circular(3),
-              ),
-              child: const Text('MY POST', style: TextStyle(
-                color: Colors.white, fontSize: 8,
-                fontWeight: FontWeight.w700, letterSpacing: 1,
-              )),
-            ),
+                width: double.infinity,
+                height: _imageHeight,
+              );
+            },
+            placeholder: (context, url) => const SizedBox.shrink(),
+            errorWidget: (context, url, error) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) widget.onImageReady();
+              });
+              return _chartFallback(catColor);
+            },
           ),
-      ]);
+          if (widget.post.isOwner)
+            Positioned(
+              top: 8, right: 10,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: kPurple.withOpacity(0.8),
+                  borderRadius: BorderRadius.circular(3),
+                ),
+                child: const Text('MY POST', style: TextStyle(
+                  color: Colors.white, fontSize: 8,
+                  fontWeight: FontWeight.w700, letterSpacing: 1,
+                )),
+              ),
+            ),
+        ]),
+      );
     }
 
-    // ✅ NEW — Video post
+    // ✅ Video post — unchanged
     if (hasVideo) {
       return Stack(children: [
         _PostVideoArea(
-          videoUrl: _normalizeMediaUrl(widget.post.filePath!), // ✅ scheme fix
+          key: widget.videoKey, // ✅ NEW
+          postId: widget.post.id, // ✅ NEW
+          videoUrl: _normalizeMediaUrl(widget.post.filePath!),
           isTablet: widget.isTablet,
-          onReady: widget.onImageReady, // same callback reuse karo
+          onReady: widget.onImageReady,
+          onTapExpand: widget.onTapVideo, // ✅ NEW
         ),
         if (widget.post.isOwner)
           Positioned(
@@ -2315,8 +1381,9 @@ class _PostImageAreaState extends State<_PostImageArea> {
   }
 
   Widget _chartFallback(Color catColor) {
+    // ✅ height ab video/image jaisi consistent
     return SizedBox(
-      height: widget.isTablet ? 140 : 160,
+      height: _imageHeight,
       width: double.infinity,
       child: Stack(fit: StackFit.expand, children: [
         Container(color: const Color(0xFF0A0118)),
@@ -2358,27 +1425,40 @@ class _PostImageAreaState extends State<_PostImageArea> {
 // ═══════════════════════════════════════════════════════════════════════════
 //  _PostVideoArea — inline video playback with tap-to-play + mute toggle
 // ═══════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════
+//  _PostVideoArea — inline video playback with tap-to-play + mute toggle
+// ═══════════════════════════════════════════════════════════════════════════
 class _PostVideoArea extends StatefulWidget {
+  final int postId; // ✅ NEW — visibility key ke liye zaroori
   final String videoUrl;
   final bool   isTablet;
   final VoidCallback onReady;
+  final VoidCallback? onTapExpand;
 
   const _PostVideoArea({
+    super.key,
+    required this.postId, // ✅ NEW
     required this.videoUrl,
     required this.isTablet,
     required this.onReady,
+    this.onTapExpand,
   });
 
   @override
   State<_PostVideoArea> createState() => _PostVideoAreaState();
 }
 
-class _PostVideoAreaState extends State<_PostVideoArea> {
+class _PostVideoAreaState extends State<_PostVideoArea> with RouteAware { // ✅ CHANGED — RouteAware mixin add kiya
   VideoPlayerController? _controller;
   bool _initialized = false;
   bool _isPlaying   = false;
-  bool _isMuted     = true; // default muted, Instagram jaisa
+  bool _isMuted     = true;
   bool _hasError    = false;
+
+  // ✅ NEW — interrupt tracking (route push ya scroll-out dono ke liye)
+  bool _wasPlayingBeforeInterrupt = false;
+  bool _isRouteOnTop = true;
+  PageRoute? _subscribedRoute;
 
   @override
   void initState() {
@@ -2386,39 +1466,69 @@ class _PostVideoAreaState extends State<_PostVideoArea> {
     _init();
   }
 
-  // Future<void> _init() async {
-  //   try {
-  //     final controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl));
-  //     await controller.initialize();
-  //     await controller.setVolume(0); // muted by default
-  //     await controller.setLooping(true);
-  //
-  //     if (!mounted) {
-  //       controller.dispose();
-  //       return;
-  //     }
-  //
-  //     setState(() {
-  //       _controller  = controller;
-  //       _initialized = true;
-  //     });
-  //     widget.onReady(); // ✅ parent ko batao ready hai (skeleton hide hoga)
-  //   } catch (_) {
-  //     if (mounted) {
-  //       setState(() => _hasError = true);
-  //       widget.onReady(); // error pe bhi skeleton hide karo
-  //     }
-  //   }
-  // }
+  // ✅ NEW — apni enclosing route (jaise HomeScreen) ko subscribe karo,
+  // taaki didPushNext / didPopNext callbacks milte rahe
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route is PageRoute && route != _subscribedRoute) {
+      if (_subscribedRoute != null) {
+        routeObserver.unsubscribe(this);
+      }
+      _subscribedRoute = route;
+      routeObserver.subscribe(this, route);
+    }
+  }
+
+  // ✅ NEW — jab bhi koi naya screen (Profile/Course/Edit/PostDetail...) upar push ho
+  @override
+  void didPushNext() {
+    _isRouteOnTop = false;
+    _wasPlayingBeforeInterrupt = _isPlaying;
+    _pauseInternally();
+  }
+
+  // ✅ NEW — jab wapas is screen pe aao (naya screen pop ho gaya)
+  @override
+  void didPopNext() {
+    _isRouteOnTop = true;
+    if (_wasPlayingBeforeInterrupt) {
+      _playInternally();
+    }
+  }
+
+  // ✅ NEW — ListView me scroll hone se card visible/invisible hua
+  void _onVisibilityChanged(VisibilityInfo info) {
+    if (!_isRouteOnTop || _controller == null || !mounted) return;
+    final isVisible = info.visibleFraction > 0.6;
+
+    if (!isVisible && _controller!.value.isPlaying) {
+      _wasPlayingBeforeInterrupt = true;
+      _pauseInternally();
+    } else if (isVisible && !_controller!.value.isPlaying && _wasPlayingBeforeInterrupt) {
+      _playInternally();
+    }
+  }
+
+  void _pauseInternally() {
+    if (_controller != null && _controller!.value.isPlaying) {
+      _controller!.pause();
+      if (mounted) setState(() => _isPlaying = false);
+    }
+  }
+
+  void _playInternally() {
+    if (_controller != null && mounted) {
+      _controller!.play();
+      setState(() => _isPlaying = true);
+    }
+  }
 
   Future<void> _init() async {
     try {
-      // ✅ NEW — Video ko disk pe cache karo (flutter_cache_manager).
-      // Pehli baar network se download hoga, uske baad HAMESHA local
-      // file se play hoga — isliye "baar baar load" wala issue fix.
       final fileInfo = await DefaultCacheManager().getSingleFile(widget.videoUrl);
-
-      final controller = VideoPlayerController.file(fileInfo); // ✅ network nahi, local file
+      final controller = VideoPlayerController.file(fileInfo);
       await controller.initialize();
       await controller.setVolume(0); // muted by default
       await controller.setLooping(true);
@@ -2432,11 +1542,21 @@ class _PostVideoAreaState extends State<_PostVideoArea> {
         _controller  = controller;
         _initialized = true;
       });
-      widget.onReady(); // ✅ parent ko batao ready hai (skeleton hide hoga)
+
+      // ✅ auto-play — sirf tab jab route bhi top pe ho
+      if (_isRouteOnTop) {
+        await _controller!.play();
+        setState(() {
+          _isPlaying = true;
+          _wasPlayingBeforeInterrupt = true; // ✅ NEW
+        });
+      }
+
+      widget.onReady();
     } catch (_) {
       if (mounted) {
         setState(() => _hasError = true);
-        widget.onReady(); // error pe bhi skeleton hide karo
+        widget.onReady();
       }
     }
   }
@@ -2451,6 +1571,7 @@ class _PostVideoAreaState extends State<_PostVideoArea> {
         _controller!.play();
         _isPlaying = true;
       }
+      _wasPlayingBeforeInterrupt = _isPlaying; // ✅ NEW — manual toggle ko sync me rakho
     });
   }
 
@@ -2462,17 +1583,29 @@ class _PostVideoAreaState extends State<_PostVideoArea> {
     });
   }
 
+  // ✅ PostDetailScreen se explicit call ke liye — harmless, RouteAware ke
+  // saath bhi safe rahega (double-pause/resume koi issue nahi karta)
+  void pauseForNavigation() => _pauseInternally();
+
+  void resumeForNavigation() {
+    _wasPlayingBeforeInterrupt = true;
+    _playInternally();
+  }
+
   @override
   void dispose() {
+    routeObserver.unsubscribe(this); // ✅ NEW — zaroori, memory leak se bachne ke liye
     _controller?.dispose();
     super.dispose();
   }
+
+  double get _videoHeight => widget.isTablet ? 260 : 500;
 
   @override
   Widget build(BuildContext context) {
     if (_hasError) {
       return Container(
-        height: widget.isTablet ? 140 : 220,
+        height: _videoHeight,
         width: double.infinity,
         color: const Color(0xFF0A0118),
         child: const Center(
@@ -2483,7 +1616,7 @@ class _PostVideoAreaState extends State<_PostVideoArea> {
 
     if (!_initialized || _controller == null) {
       return Container(
-        height: widget.isTablet ? 140 : 220,
+        height: _videoHeight,
         width: double.infinity,
         color: const Color(0xFF0A0118),
         child: const Center(
@@ -2492,253 +1625,407 @@ class _PostVideoAreaState extends State<_PostVideoArea> {
       );
     }
 
-    final aspect = _controller!.value.aspectRatio;
+    final videoSize = _controller!.value.size;
 
-    return GestureDetector(
-      onTap: _togglePlay,
-      child: Stack(alignment: Alignment.center, children: [
-        AspectRatio(
-          aspectRatio: aspect,
-          child: VideoPlayer(_controller!),
-        ),
-        // Play icon jab paused ho
-        if (!_isPlaying)
-          Container(
-            width: 56, height: 56,
-            decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.5), shape: BoxShape.circle),
-            child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 32),
-          ),
-        // Mute toggle
-        Positioned(
-          bottom: 10, right: 10,
-          child: GestureDetector(
-            onTap: _toggleMute,
-            child: Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.55), shape: BoxShape.circle),
-              child: Icon(
-                _isMuted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
-                color: Colors.white, size: 16,
+    // ✅ NEW — poore video widget ko VisibilityDetector se wrap kiya
+    return VisibilityDetector(
+      key: Key('post_video_${widget.postId}'),
+      onVisibilityChanged: _onVisibilityChanged,
+      child: GestureDetector(
+        onTap: widget.onTapExpand ?? _togglePlay,
+        child: Container(
+          height: _videoHeight,
+          width: double.infinity,
+          color: const Color(0xFF000000),
+          child: Stack(alignment: Alignment.center, children: [
+            FittedBox(
+              fit: BoxFit.contain,
+              child: SizedBox(
+                width: videoSize.width,
+                height: videoSize.height,
+                child: VideoPlayer(_controller!),
               ),
             ),
-          ),
+            if (!_isPlaying)
+              Container(
+                width: 56, height: 56,
+                decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.5), shape: BoxShape.circle),
+                child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 32),
+              ),
+            Positioned(
+              bottom: 10, right: 10,
+              child: GestureDetector(
+                onTap: _toggleMute,
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.55), shape: BoxShape.circle),
+                  child: Icon(
+                    _isMuted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
+                    color: Colors.white, size: 16,
+                  ),
+                ),
+              ),
+            ),
+          ]),
         ),
-      ]),
+      ),
     );
   }
 }
 
 
 
-// class _PostImageArea extends StatelessWidget {
-//   final GetPost post;
-//   final bool    isTablet;
-//   const _PostImageArea({required this.post, required this.isTablet});
+
+
+
+// class _PostVideoArea extends StatefulWidget {
+//   final String videoUrl;
+//   final bool   isTablet;
+//   final VoidCallback onReady;
+//   final VoidCallback? onTapExpand; // ✅ NEW
+//
+//   const _PostVideoArea({
+//     super.key, // ✅ ADD THIS — ab key accept hoga
+//     required this.videoUrl,
+//     required this.isTablet,
+//     required this.onReady,
+//     this.onTapExpand, // ✅ NEW
+//   });
+//
+//   @override
+//   State<_PostVideoArea> createState() => _PostVideoAreaState();
+// }
+//
+// class _PostVideoAreaState extends State<_PostVideoArea> {
+//   VideoPlayerController? _controller;
+//   bool _initialized = false;
+//   bool _isPlaying   = false;
+//   bool _isMuted     = false; // default muted, Instagram jaisa
+//   bool _hasError    = false;
+//
+//   @override
+//   void initState() {
+//     super.initState();
+//     _init();
+//   }
+//
+//
+//   // Future<void> _init() async {
+//   //   try {
+//   //     // ✅ NEW — Video ko disk pe cache karo (flutter_cache_manager).
+//   //     // Pehli baar network se download hoga, uske baad HAMESHA local
+//   //     // file se play hoga — isliye "baar baar load" wala issue fix.
+//   //     final fileInfo = await DefaultCacheManager().getSingleFile(widget.videoUrl);
+//   //
+//   //     final controller = VideoPlayerController.file(fileInfo); // ✅ network nahi, local file
+//   //     await controller.initialize();
+//   //     await controller.setVolume(0); // muted by default
+//   //     await controller.setLooping(true);
+//   //
+//   //     if (!mounted) {
+//   //       controller.dispose();
+//   //       return;
+//   //     }
+//   //
+//   //     setState(() {
+//   //       _controller  = controller;
+//   //       _initialized = true;
+//   //     });
+//   //     widget.onReady(); // ✅ parent ko batao ready hai (skeleton hide hoga)
+//   //   } catch (_) {
+//   //     if (mounted) {
+//   //       setState(() => _hasError = true);
+//   //       widget.onReady(); // error pe bhi skeleton hide karo
+//   //     }
+//   //   }
+//   // }
+//
+//   Future<void> _init() async {
+//     try {
+//       final fileInfo = await DefaultCacheManager().getSingleFile(widget.videoUrl);
+//       final controller = VideoPlayerController.file(fileInfo);
+//       await controller.initialize();
+//       await controller.setVolume(1); // muted by default
+//       await controller.setLooping(true);
+//
+//       if (!mounted) {
+//         controller.dispose();
+//         return;
+//       }
+//
+//       setState(() {
+//         _controller  = controller;
+//         _initialized = true;
+//       });
+//
+//       // ✅ NEW — auto-play
+//       await _controller!.play();
+//       setState(() => _isPlaying = true);
+//
+//       widget.onReady();
+//     } catch (_) {
+//       if (mounted) {
+//         setState(() => _hasError = true);
+//         widget.onReady();
+//       }
+//     }
+//   }
+//
+//   void _togglePlay() {
+//     if (_controller == null) return;
+//     setState(() {
+//       if (_controller!.value.isPlaying) {
+//         _controller!.pause();
+//         _isPlaying = false;
+//       } else {
+//         _controller!.play();
+//         _isPlaying = true;
+//       }
+//     });
+//   }
+//
+//   void _toggleMute() {
+//     if (_controller == null) return;
+//     setState(() {
+//       _isMuted = !_isMuted;
+//       _controller!.setVolume(_isMuted ? 0 : 1);
+//     });
+//   }
+//
+//   // ✅ NEW — reel screen open karne se pehle pause, wapas aane par resume
+//   void pauseForNavigation() {
+//     if (_controller != null && _controller!.value.isPlaying) {
+//       _controller!.pause();
+//       if (mounted) setState(() => _isPlaying = false);
+//     }
+//   }
+//
+//   void resumeForNavigation() {
+//     if (_controller != null && mounted) {
+//       _controller!.play();
+//       setState(() => _isPlaying = true);
+//     }
+//   }
+//
+//   @override
+//   void dispose() {
+//     _controller?.dispose();
+//     super.dispose();
+//   }
+//
+//   // @override
+//   // Widget build(BuildContext context) {
+//   //   if (_hasError) {
+//   //     return Container(
+//   //       height: widget.isTablet ? 140 : 220,
+//   //       width: double.infinity,
+//   //       color: const Color(0xFF0A0118),
+//   //       child: const Center(
+//   //         child: Icon(Icons.videocam_off_rounded, color: kTextMuted, size: 40),
+//   //       ),
+//   //     );
+//   //   }
+//   //
+//   //   if (!_initialized || _controller == null) {
+//   //     return Container(
+//   //       height: widget.isTablet ? 140 : 220,
+//   //       width: double.infinity,
+//   //       color: const Color(0xFF0A0118),
+//   //       child: const Center(
+//   //         child: CircularProgressIndicator(color: kPurple, strokeWidth: 2),
+//   //       ),
+//   //     );
+//   //   }
+//   //
+//   //   final aspect = _controller!.value.aspectRatio;
+//   //
+//   //   return GestureDetector(
+//   //     onTap: _togglePlay,
+//   //     child: Stack(alignment: Alignment.center, children: [
+//   //       AspectRatio(
+//   //         aspectRatio: aspect,
+//   //         child: VideoPlayer(_controller!),
+//   //       ),
+//   //       // Play icon jab paused ho
+//   //       if (!_isPlaying)
+//   //         Container(
+//   //           width: 56, height: 56,
+//   //           decoration: BoxDecoration(
+//   //               color: Colors.black.withOpacity(0.5), shape: BoxShape.circle),
+//   //           child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 32),
+//   //         ),
+//   //       // Mute toggle
+//   //       Positioned(
+//   //         bottom: 10, right: 10,
+//   //         child: GestureDetector(
+//   //           onTap: _toggleMute,
+//   //           child: Container(
+//   //             padding: const EdgeInsets.all(6),
+//   //             decoration: BoxDecoration(
+//   //                 color: Colors.black.withOpacity(0.55), shape: BoxShape.circle),
+//   //             child: Icon(
+//   //               _isMuted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
+//   //               color: Colors.white, size: 16,
+//   //             ),
+//   //           ),
+//   //         ),
+//   //       ),
+//   //     ]),
+//   //   );
+//   // }
+//
+//
+//
+//
+//   // double get _videoHeight => widget.isTablet ? 260 : 505; // ✅ fixed height — consistent layout
+//   //
+//   // @override
+//   // Widget build(BuildContext context) {
+//   //   if (_hasError) {
+//   //     return Container(
+//   //       height: _videoHeight,
+//   //       width: double.infinity,
+//   //       color: const Color(0xFF0A0118),
+//   //       child: const Center(
+//   //         child: Icon(Icons.videocam_off_rounded, color: kTextMuted, size: 40),
+//   //       ),
+//   //     );
+//   //   }
+//   //
+//   //   if (!_initialized || _controller == null) {
+//   //     return Container(
+//   //       height: _videoHeight,
+//   //       width: double.infinity,
+//   //       color: const Color(0xFF0A0118),
+//   //       child: const Center(
+//   //         child: CircularProgressIndicator(color: kPurple, strokeWidth: 2),
+//   //       ),
+//   //     );
+//   //   }
+//   //
+//   //   final videoSize = _controller!.value.size;
+//   //
+//   //   return GestureDetector(
+//   //     onTap: _togglePlay,
+//   //     child: SizedBox(
+//   //       height: _videoHeight,
+//   //       width: double.infinity,
+//   //       child: Stack(alignment: Alignment.center, children: [
+//   //         // ✅ Video poora box cover karega — black bars nahi, thoda crop ho sakta hai
+//   //         ClipRect(
+//   //           child: OverflowBox(
+//   //             maxWidth: double.infinity,
+//   //             maxHeight: double.infinity,
+//   //             child: FittedBox(
+//   //               fit: BoxFit.cover,
+//   //               child: SizedBox(
+//   //                 width: videoSize.width,
+//   //                 height: videoSize.height,
+//   //                 child: VideoPlayer(_controller!),
+//   //               ),
+//   //             ),
+//   //           ),
+//   //         ),
+//   //         if (!_isPlaying)
+//   //           Container(
+//   //             width: 56, height: 56,
+//   //             decoration: BoxDecoration(
+//   //                 color: Colors.black.withOpacity(0.5), shape: BoxShape.circle),
+//   //             child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 32),
+//   //           ),
+//   //         Positioned(
+//   //           bottom: 10, right: 10,
+//   //           child: GestureDetector(
+//   //             onTap: _toggleMute,
+//   //             child: Container(
+//   //               padding: const EdgeInsets.all(6),
+//   //               decoration: BoxDecoration(
+//   //                   color: Colors.black.withOpacity(0.55), shape: BoxShape.circle),
+//   //               child: Icon(
+//   //                 _isMuted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
+//   //                 color: Colors.white, size: 16,
+//   //               ),
+//   //             ),
+//   //           ),
+//   //         ),
+//   //       ]),
+//   //     ),
+//   //   );
+//   // }
+//
+//
+//   double get _videoHeight => widget.isTablet ? 260 : 500; // fixed height — layout consistent
 //
 //   @override
 //   Widget build(BuildContext context) {
-//     final catColor = categoryColor(post.category);
-//     final hasImage = post.filePath != null &&
-//         post.filePath!.isNotEmpty &&
-//         post.fileType == 'image';
-//
-//     if (hasImage) {
-//       return Stack(
-//         children: [
-//
-//           // ✅ AspectRatio HATA diya — image apni natural height legi
-//           // CachedNetworkImage = disk cache — scroll/restart pe reload nahi
-//           CachedNetworkImage(
-//             imageUrl:  post.filePath!,
-//             fit:       BoxFit.contain,  // poori image dikhegi, cut nahi hogi
-//             width:     double.infinity,
-//
-//             // ✅ Loading shimmer
-//             placeholder: (context, url) => ShimmerBox(
-//               width:        double.infinity,
-//               height:       isTablet ? 140 : 160,
-//               borderRadius: 0,
-//             ),
-//
-//             // ✅ Error fallback
-//             errorWidget: (context, url, error) => _chartFallback(catColor),
-//           ),
-//
-//           // MY POST badge
-//           if (post.isOwner)
-//             Positioned(
-//               top: 8, right: 10,
-//               child: Container(
-//                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-//                 decoration: BoxDecoration(
-//                   color:        kPurple.withOpacity(0.8),
-//                   borderRadius: BorderRadius.circular(3),
-//                 ),
-//                 child: const Text('MY POST',
-//                     style: TextStyle(
-//                         color:         Colors.white,
-//                         fontSize:      8,
-//                         fontWeight:    FontWeight.w700,
-//                         letterSpacing: 1)),
-//               ),
-//             ),
-//         ],
+//     if (_hasError) {
+//       return Container(
+//         height: _videoHeight,
+//         width: double.infinity,
+//         color: const Color(0xFF0A0118),
+//         child: const Center(
+//           child: Icon(Icons.videocam_off_rounded, color: kTextMuted, size: 40),
+//         ),
 //       );
 //     }
 //
-//     return _chartFallback(catColor);
-//   }
-//
-//   Widget _chartFallback(Color catColor) => SizedBox(
-//     height: isTablet ? 140 : 160,
-//     width:  double.infinity,
-//     child: Stack(fit: StackFit.expand, children: [
-//       Container(color: const Color(0xFF0A0118)),
-//       Center(
-//         child: Container(
-//           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-//           decoration: BoxDecoration(
-//             color:        Colors.black.withOpacity(0.45),
-//             borderRadius: BorderRadius.circular(8),
-//             border:       Border.all(color: catColor.withOpacity(0.4), width: 0.8),
-//           ),
-//           child: Text(post.category.toUpperCase(),
-//               style: TextStyle(
-//                   color:         catColor,
-//                   fontSize:      18,
-//                   fontWeight:    FontWeight.w900,
-//                   letterSpacing: 3)),
+//     if (!_initialized || _controller == null) {
+//       return Container(
+//         height: _videoHeight,
+//         width: double.infinity,
+//         color: const Color(0xFF0A0118),
+//         child: const Center(
+//           child: CircularProgressIndicator(color: kPurple, strokeWidth: 2),
 //         ),
-//       ),
-//       if (post.isOwner)
-//         Positioned(
-//           top: 8, right: 10,
-//           child: Container(
-//             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-//             decoration: BoxDecoration(
-//               color:        kPurple.withOpacity(0.8),
-//               borderRadius: BorderRadius.circular(3),
-//             ),
-//             child: const Text('MY POST',
-//                 style: TextStyle(
-//                     color:         Colors.white,
-//                     fontSize:      8,
-//                     fontWeight:    FontWeight.w700,
-//                     letterSpacing: 1)),
-//           ),
-//         ),
-//     ]),
-//   );
-// }
-
-
-// class _PostImageArea extends StatelessWidget {
-//   final GetPost post;
-//   final bool    isTablet;
-//   const _PostImageArea({required this.post, required this.isTablet});
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     final catColor = categoryColor(post.category);
-//     final hasImage = post.filePath != null &&
-//         post.filePath!.isNotEmpty &&
-//         post.fileType == 'image';
-//
-//     if (hasImage) {
-//       return Stack(children: [
-//         Image.network(
-//           post.filePath!,
-//           width: double.infinity,
-//           fit:   BoxFit.contain,
-//           loadingBuilder: (_, child, get_progress) {
-//             if (get_progress == null) return child;
-//             // return Container(
-//             //   height: isTablet ? 140 : 160,
-//             //   color:  const Color(0xFF1A0535),
-//             //   child: const Center(
-//             //       child: CircularProgressIndicator(color: kPurple, strokeWidth: 2)),
-//             // );
-//             // ✅ CHANGE 4a — Shimmer box same size as image area
-//             return ShimmerBox(
-//               width:        double.infinity,
-//               height:       isTablet ? 140 : 160,
-//               borderRadius: 0,
-//             );
-//           },
-//           errorBuilder: (_, __, ___) => _chartFallback(catColor),
-//         ),
-//         if (post.isOwner)
-//           Positioned(
-//             top: 8, right: 10,
-//             child: Container(
-//               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-//               decoration: BoxDecoration(
-//                   color: kPurple.withOpacity(0.8),
-//                   borderRadius: BorderRadius.circular(3)),
-//               child: const Text('MY POST',
-//                   style: TextStyle(color: Colors.white, fontSize: 8,
-//                       fontWeight: FontWeight.w700, letterSpacing: 1)),
-//             ),
-//           ),
-//       ]);
+//       );
 //     }
-//     return _chartFallback(catColor);
-//   }
 //
-//   Widget _chartFallback(Color catColor) => SizedBox(
-//     height: isTablet ? 140 : 160,
-//     width: double.infinity,
-//     child: Stack(fit: StackFit.expand, children: [
-//       Container(color: const Color(0xFF0A0118)),
-//       Center(
-//         child: Container(
-//           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-//           decoration: BoxDecoration(
-//             color:  Colors.black.withOpacity(0.45),
-//             borderRadius: BorderRadius.circular(8),
-//             border: Border.all(color: catColor.withOpacity(0.4), width: 0.8),
+//     final videoSize = _controller!.value.size;
+//
+//     return GestureDetector(
+//       //onTap: _togglePlay,
+//       onTap: widget.onTapExpand ?? _togglePlay,
+//       child: Container(
+//         height: _videoHeight,
+//         width: double.infinity,
+//         color: const Color(0xFF000000), // ✅ black background — bars yahi dikhenge
+//         child: Stack(alignment: Alignment.center, children: [
+//           // ✅ CHANGE — cover ki jagah contain: poora video content dikhega,
+//           // crop nahi hoga, mismatch hone par corners black rahenge
+//           FittedBox(
+//             fit: BoxFit.contain,
+//             child: SizedBox(
+//               width: videoSize.width,
+//               height: videoSize.height,
+//               child: VideoPlayer(_controller!),
+//             ),
 //           ),
-//           child: Text(post.category.toUpperCase(),
-//               style: TextStyle(color: catColor, fontSize: 18,
-//                   fontWeight: FontWeight.w900, letterSpacing: 3)),
-//         ),
+//           if (!_isPlaying)
+//             Container(
+//               width: 56, height: 56,
+//               decoration: BoxDecoration(
+//                   color: Colors.black.withOpacity(0.5), shape: BoxShape.circle),
+//               child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 32),
+//             ),
+//           Positioned(
+//             bottom: 10, right: 10,
+//             child: GestureDetector(
+//               onTap: _toggleMute,
+//               child: Container(
+//                 padding: const EdgeInsets.all(6),
+//                 decoration: BoxDecoration(
+//                     color: Colors.black.withOpacity(0.55), shape: BoxShape.circle),
+//                 child: Icon(
+//                   _isMuted ? Icons.volume_off_rounded : Icons.volume_up_rounded, // _isMuted
+//                   color: Colors.white, size: 16,
+//                 ),
+//               ),
+//             ),
+//           ),
+//         ]),
 //       ),
-//       if (post.isOwner)
-//         Positioned(
-//           top: 8, right: 10,
-//           child: Container(
-//             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-//             decoration: BoxDecoration(
-//                 color: kPurple.withOpacity(0.8),
-//                 borderRadius: BorderRadius.circular(3)),
-//             child: const Text('MY POST',
-//                 style: TextStyle(color: Colors.white, fontSize: 8,
-//                     fontWeight: FontWeight.w700, letterSpacing: 1)),
-//           ),
-//         ),
-//     ]),
-//   );
+//     );
+//   }
 // }
-
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// HOW TO USE PostCard in SliverList / SliverGrid (HomeScreen me update karo)
-// ═══════════════════════════════════════════════════════════════════════════════
-//
-// OLD code:
-// _PostCard(
-//   post: feedState.posts[index],
-//   isTablet: false,
-//   onLikeTap: () => ref.read(getPostViewModelProvider.notifier)
-//       .toggleLike(feedState.posts[index].id),
-// )
-//
-// NEW code (onLikeTap hatao — PostCard internally handle karta hai):
-// PostCard(
-//   post:     feedState.posts[index],
-//   isTablet: false,
-// )
-//
-// ════════════════════════════════════════════════════════════════════════════

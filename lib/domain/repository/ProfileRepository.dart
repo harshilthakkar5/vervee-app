@@ -5,6 +5,7 @@
 import '../../utils/NetworkResult.dart';
 import '../model/profile/ChangePasswordResult.dart';
 import '../model/profile/CustomerPortalResult.dart';
+import '../model/profile/DeleteAccountResult.dart';
 import '../model/profile/SubscriptionInfo.dart';
 import '../model/profile/UserFeedPost.dart';
 import '../model/profile/UserProfile.dart';
@@ -43,4 +44,7 @@ abstract interface class ProfileRepository {
   Future<NetworkResult<CustomerPortalResult>> getCustomerCheckoutWithPromoUrl(
       String promoCode,
       );
+
+  // ── 5. Delete account ───────────────────────────────────────────
+  Future<NetworkResult<DeleteAccountResult>> deleteAccount();
 }

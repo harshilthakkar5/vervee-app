@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/model/profile/SubscriptionInfo.dart';
 import '../../utils/AuthService.dart';
 import '../../utils/PostCacheService.dart';
+import '../../utils/ProfileCacheService.dart';
 import '../../utils/WebViewScreen.dart';
 import '../viewmodal/avatar/AvatarViewModel.dart';
 import '../viewmodal/pofile/ProfileViewmodels.dart';
@@ -250,6 +251,47 @@ class _AccountTabState extends ConsumerState<_AccountTab> {
       }
     });
 
+
+    // Delete Account listener — success pe logout + LoginScreen navigate
+    ref.listen(deleteAccountViewModelProvider, (_, next) async {
+      if (next.isDeleted) {
+        // Same cleanup jo _logout() me hota hai — cache clear + session clear
+        await PostCacheService.clearAllCache();
+        await ProfileCacheService.instance.clearAll();
+        await CachedNetworkImage.evictFromCache('');
+        await DefaultCacheManager().emptyCache();
+        await AuthService.instance.logout(keepCredentials: false);
+
+        ref.invalidate(profileInfoViewModelProvider);
+        ref.invalidate(userFeedViewModelProvider);
+        ref.invalidate(subscriptionViewModelProvider);
+        ref.invalidate(avatarViewModelProvider);
+        ref.invalidate(deleteAccountViewModelProvider);
+
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(next.successMessage ?? 'Account deleted'),
+            backgroundColor: kBgDark,
+          ),
+        );
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+              (route) => false,
+        );
+      }
+      if (next.errorMessage != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(next.errorMessage!),
+            backgroundColor: kRed,
+          ),
+        );
+        ref.read(deleteAccountViewModelProvider.notifier).clearMessages();
+      }
+    });
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -423,24 +465,67 @@ class _AccountTabState extends ConsumerState<_AccountTab> {
                                         fontSize: 13)),
                               ),
                             ),
+                            // const SizedBox(width: 10),
+                            // Expanded(
+                            //   child: ElevatedButton(
+                            //     // Delete API nahi hai abhi
+                            //     onPressed: () {},
+                            //     style: ElevatedButton.styleFrom(
+                            //       backgroundColor: kRed,
+                            //       shape: RoundedRectangleBorder(
+                            //           borderRadius:
+                            //           BorderRadius.circular(8)),
+                            //       padding: const EdgeInsets.symmetric(
+                            //           vertical: 9),
+                            //     ),
+                            //     child: const Text('Yes, Delete',
+                            //         style: TextStyle(
+                            //             color: Colors.white,
+                            //             fontSize: 13,
+                            //             fontWeight: FontWeight.w600)),
+                            //   ),
+                            // ),
                             const SizedBox(width: 10),
                             Expanded(
-                              child: ElevatedButton(
-                                // Delete API nahi hai abhi
-                                onPressed: () {},
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: kRed,
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius:
-                                      BorderRadius.circular(8)),
-                                  padding: const EdgeInsets.symmetric(
-                                      vertical: 9),
-                                ),
-                                child: const Text('Yes, Delete',
-                                    style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600)),
+                              child: Consumer(
+                                builder: (context, ref, _) {
+                                  final delState =
+                                  ref.watch(deleteAccountViewModelProvider);
+                                  return ElevatedButton(
+                                    onPressed: delState.isLoading
+                                        ? null
+                                        : () {
+                                      ref
+                                          .read(deleteAccountViewModelProvider
+                                          .notifier)
+                                          .deleteAccount();
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: kRed,
+                                      disabledBackgroundColor:
+                                      kRed.withOpacity(0.5),
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                          BorderRadius.circular(8)),
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 9),
+                                    ),
+                                    child: delState.isLoading
+                                        ? const SizedBox(
+                                      height: 14,
+                                      width: 14,
+                                      child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 2),
+                                    )
+                                        : const Text('Yes, Delete',
+                                        style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 13,
+                                            fontWeight:
+                                            FontWeight.w600)),
+                                  );
+                                },
                               ),
                             ),
                           ],

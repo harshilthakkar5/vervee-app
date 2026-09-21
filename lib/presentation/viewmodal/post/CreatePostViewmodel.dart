@@ -60,7 +60,7 @@ class CreatePostViewModel extends _$CreatePostViewModel {
 
   Future<void> createPost({
     required String title,
-    required String content,
+     String? content,
     required String category,
     File? file,
   }) async {

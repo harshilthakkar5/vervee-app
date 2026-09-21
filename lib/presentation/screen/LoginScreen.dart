@@ -356,6 +356,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with TickerProviderSt
                                 ),
                               ),
 
+                              SizedBox(height: screenHeight * 0.006),
+                              SizedBox(height: screenHeight * 0.006),
+                              SizedBox(height: screenHeight * 0.006),
+                              SizedBox(height: screenHeight * 0.006),
+
+                              Text(
+                                'SKILL · HUSTLE · PROSPER',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: const Color(0xFFD4AF37).withOpacity(0.8),
+                                  //fontSize: size.height * 0.014,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 1.2,
+                                ),
+                              ),
+
                               SizedBox(height: screenHeight * 0.035),
 
                               // ── Email

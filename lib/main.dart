@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_quill/flutter_quill.dart';
@@ -5,15 +6,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:in_app_update/in_app_update.dart';
+import 'package:vervee_app/presentation/screen/HomeScreen.dart';
 import 'package:vervee_app/presentation/screen/LoginScreen.dart';
 import 'package:vervee_app/presentation/screen/OtpScreen.dart';
 import 'package:vervee_app/presentation/screen/SplashScreen.dart';
 import 'package:vervee_app/utils/ProfileCacheService.dart';
 import 'package:vervee_app/utils/appNavigatorKey.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;   // ✅ NAYA IMPORT
 
 // void main() {
 //   runApp(const MyApp());
 // }
+
+final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -54,6 +59,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   }
 
   Future<void> _resumeUpdateIfNeeded() async {
+    if (kIsWeb) return;   // ✅ YE LINE ADD KI
     try {
       final info = await InAppUpdate.checkForUpdate();
       if (info.installStatus == InstallStatus.downloaded) {
@@ -67,6 +73,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorObservers: [routeObserver],
       navigatorKey: appNavigatorKey,
       debugShowCheckedModeBanner: false,
       title: 'Vervee',
@@ -132,3 +139,5 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 //     );
 //   }
 // }
+
+

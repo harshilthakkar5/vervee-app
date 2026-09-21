@@ -79,35 +79,102 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     });
   }
 
+  // Future<void> _logout() async {
+  //
+  //   // ✅ 1 — Post cache clear karo (SharedPreferences me saved posts)
+  //   await PostCacheService.clearAllCache();
+  //
+  //   // ✅ Profile cache clear karo (Hive) — naya/dusra user login kare to purana data na dikhe
+  //   await ProfileCacheService.instance.clearAll();
+  //
+  //   // ✅ 2 — Image cache clear karo (CachedNetworkImage ka disk cache)
+  //   await CachedNetworkImage.evictFromCache('');
+  //   // ya poora image cache clear karo:
+  //   await DefaultCacheManager().emptyCache();
+  //
+  //   await AuthService.instance.logout(keepCredentials: true);
+  //
+  //   // ✅ NAYA — Riverpod providers invalidate karo taaki in-memory state bhi clear ho jaye
+  //   // Warna keepAlive() ki wajah se purana profile/feed/subscription state
+  //   // memory me hi reh jaata he aur naya login pe wahi purana data dikhta he
+  //   ref.invalidate(profileInfoViewModelProvider);
+  //   ref.invalidate(userFeedViewModelProvider);
+  //   ref.invalidate(subscriptionViewModelProvider);
+  //   ref.invalidate(avatarViewModelProvider); // agar avatar bhi user-specific he
+  //
+  //   if (!mounted) return;
+  //   Navigator.pushAndRemoveUntil(
+  //     context,
+  //     MaterialPageRoute(builder: (_) => const LoginScreen()),
+  //         (route) => false,
+  //   );
+  // }
+
+  // bool _isLoggingOut = false; // ← class field me add karo
+  //
+  // Future<void> _logout() async {
+  //   if (_isLoggingOut || !mounted) return;   // ← double-tap / re-entry guard
+  //   _isLoggingOut = true;
+  //
+  //   // 1) Navigate FIRST — ProfileScreen turant unmount ho jayega,
+  //   //    isliye ab invalidate se koi naya rebuild/refetch nahi hoga
+  //   Navigator.pushAndRemoveUntil(
+  //     context,
+  //     MaterialPageRoute(builder: (_) => const LoginScreen()),
+  //         (route) => false,
+  //   );
+  //
+  //   // 2) Ab cleanup — screen already gone hai
+  //   await PostCacheService.clearAllCache();
+  //   await ProfileCacheService.instance.clearAll();
+  //   await CachedNetworkImage.evictFromCache('');
+  //   await DefaultCacheManager().emptyCache();
+  //   await AuthService.instance.logout(keepCredentials: true);
+  //
+  //   // 3) Providers ko sirf "read" karke invalidate karo, "watch" wale ref se nahi
+  //   //    (widget already disposed ho sakta hai isliye guard zaroori)
+  //   if (mounted) {
+  //     ref.invalidate(profileInfoViewModelProvider);
+  //     ref.invalidate(userFeedViewModelProvider);
+  //     ref.invalidate(subscriptionViewModelProvider);
+  //     ref.invalidate(avatarViewModelProvider);
+  //   }
+  // }
+
   Future<void> _logout() async {
-
-    // ✅ 1 — Post cache clear karo (SharedPreferences me saved posts)
-    await PostCacheService.clearAllCache();
-
-    // ✅ Profile cache clear karo (Hive) — naya/dusra user login kare to purana data na dikhe
-    await ProfileCacheService.instance.clearAll();
-
-    // ✅ 2 — Image cache clear karo (CachedNetworkImage ka disk cache)
-    await CachedNetworkImage.evictFromCache('');
-    // ya poora image cache clear karo:
-    await DefaultCacheManager().emptyCache();
-
-    await AuthService.instance.logout(keepCredentials: true);
-
-    // ✅ NAYA — Riverpod providers invalidate karo taaki in-memory state bhi clear ho jaye
-    // Warna keepAlive() ki wajah se purana profile/feed/subscription state
-    // memory me hi reh jaata he aur naya login pe wahi purana data dikhta he
-    ref.invalidate(profileInfoViewModelProvider);
-    ref.invalidate(userFeedViewModelProvider);
-    ref.invalidate(subscriptionViewModelProvider);
-    ref.invalidate(avatarViewModelProvider); // agar avatar bhi user-specific he
-
-    if (!mounted) return;
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-          (route) => false,
+    // ── 1. Show Loading Dialog taaki user multiple taps na kare ──────────
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator(color: kPurple)),
     );
+
+    try {
+      // ── 2. Navigation pehle trigger karo taaki UI dispose ho jaye aur calls ruk jayein ─
+      // Hum Navigator.pushAndRemoveUntil ko yahan call karenge process ke end mein,
+      // lekin calls ko avoid karne ke liye AuthService pehle hi handle karein.
+
+      // ✅ Cache clear karo
+      await PostCacheService.clearAllCache();
+      await DefaultCacheManager().emptyCache();
+
+      // ✅ Token clear karo
+      await AuthService.instance.logout(keepCredentials: true);
+
+      if (!mounted) return;
+      // Close Loading Dialog
+      Navigator.pop(context);
+
+      // Navigate to Login
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+            (route) => false,
+      );
+    } catch (e) {
+      if (mounted) Navigator.pop(context);
+      debugPrint("Logout error: $e");
+    }
   }
 
   void _openEditProfile() {

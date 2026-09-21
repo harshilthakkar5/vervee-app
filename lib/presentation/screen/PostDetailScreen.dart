@@ -711,33 +711,60 @@ class _DetailOwnerActionsSheet extends StatelessWidget {
       ),
     );
 
+    // if (confirmed != true || !ctx.mounted) return;
+    //
+    // // ✅ Pop se pehle messenger save karo
+    // final messenger = ScaffoldMessenger.of(ctx);
+    // Navigator.pop(ctx); // sheet band karo
+    //
+    // final error = await ref
+    //     .read(getPostViewModelProvider.notifier)
+    //     .deletePost(post.id);
+    //
+    // if (error == null) {
+    //   // ✅ Feed list update karo — warna profile screen pe purani list dikhegi
+    //   ref.read(userFeedViewModelProvider.notifier).refresh();
+    //
+    //   // ✅ FeedDetailScreen band karo
+    //   onDeleted();
+    //
+    //   messenger.showSnackBar(
+    //     const SnackBar(
+    //       content:         Text('Post deleted successfully.'),
+    //       backgroundColor: Color(0xFF22C55E),
+    //     ),
+    //   );
+    // } else {
+    //   messenger.showSnackBar(
+    //     SnackBar(
+    //       content:         Text('Delete failed: $error'),
+    //       backgroundColor: const Color(0xFFEF4444),
+    //     ),
+    //   );
+    // }
+
     if (confirmed != true || !ctx.mounted) return;
 
-    // ✅ Pop se pehle messenger save karo
     final messenger = ScaffoldMessenger.of(ctx);
-    Navigator.pop(ctx); // sheet band karo
+    Navigator.pop(ctx);
 
+    // ✅ CHANGED — ab userFeedViewModelProvider se hi delete karo
     final error = await ref
-        .read(getPostViewModelProvider.notifier)
+        .read(userFeedViewModelProvider.notifier)
         .deletePost(post.id);
 
     if (error == null) {
-      // ✅ Feed list update karo — warna profile screen pe purani list dikhegi
-      ref.read(userFeedViewModelProvider.notifier).refresh();
-
-      // ✅ FeedDetailScreen band karo
       onDeleted();
-
       messenger.showSnackBar(
         const SnackBar(
-          content:         Text('Post deleted successfully.'),
+          content: Text('Post deleted successfully.'),
           backgroundColor: Color(0xFF22C55E),
         ),
       );
     } else {
       messenger.showSnackBar(
         SnackBar(
-          content:         Text('Delete failed: $error'),
+          content: Text('Delete failed: $error'),
           backgroundColor: const Color(0xFFEF4444),
         ),
       );
@@ -820,7 +847,11 @@ class _DetailOwnerActionsSheet extends StatelessWidget {
           icon: Icons.edit_outlined, label: 'Edit Post', color: kPurpleLight,
           onTap: () {
             Navigator.pop(context);
-            showEditPostSheet(context, ref, _toGetPost(post, ref));
+          //  showEditPostSheet(context, ref, _toGetPost(post, ref));
+            showEditPostSheet(
+              context, ref, _toGetPost(post, ref),
+              isFromProfile: true, // ✅ NEW
+            );
           },
         ),
         const SizedBox(height: 8),

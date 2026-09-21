@@ -150,7 +150,7 @@ final class UserFeedViewModelProvider
   }
 }
 
-String _$userFeedViewModelHash() => r'4675b434b58a95a01d95cbe7aa4ba063c45cb727';
+String _$userFeedViewModelHash() => r'9ff19e82699c208fc429f626f38e28f9e0c032ba';
 
 abstract class _$UserFeedViewModel extends $Notifier<UserFeedState> {
   UserFeedState build();
@@ -218,6 +218,60 @@ abstract class _$SubscriptionViewModel extends $Notifier<SubscriptionState> {
             as $ClassProviderElement<
               AnyNotifier<SubscriptionState, SubscriptionState>,
               SubscriptionState,
+              Object?,
+              Object?
+            >;
+    element.handleValue(ref, created);
+  }
+}
+
+@ProviderFor(DeleteAccountViewModel)
+const deleteAccountViewModelProvider = DeleteAccountViewModelProvider._();
+
+final class DeleteAccountViewModelProvider
+    extends $NotifierProvider<DeleteAccountViewModel, DeleteAccountState> {
+  const DeleteAccountViewModelProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'deleteAccountViewModelProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$deleteAccountViewModelHash();
+
+  @$internal
+  @override
+  DeleteAccountViewModel create() => DeleteAccountViewModel();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(DeleteAccountState value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<DeleteAccountState>(value),
+    );
+  }
+}
+
+String _$deleteAccountViewModelHash() =>
+    r'9e52e0d7b37e54ef6c8c6018eea5e5ac75954687';
+
+abstract class _$DeleteAccountViewModel extends $Notifier<DeleteAccountState> {
+  DeleteAccountState build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final created = build();
+    final ref = this.ref as $Ref<DeleteAccountState, DeleteAccountState>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<DeleteAccountState, DeleteAccountState>,
+              DeleteAccountState,
               Object?,
               Object?
             >;

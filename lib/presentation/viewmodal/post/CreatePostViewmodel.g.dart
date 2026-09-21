@@ -42,7 +42,7 @@ final class CreatePostViewModelProvider
 }
 
 String _$createPostViewModelHash() =>
-    r'48d3353c850ed8b1f2df32e2f12536ccc4bc4766';
+    r'1675f2d32402a4f1262a34452e11c3aa4ffcd409';
 
 abstract class _$CreatePostViewModel
     extends $Notifier<NetworkResult<CreatePost>> {

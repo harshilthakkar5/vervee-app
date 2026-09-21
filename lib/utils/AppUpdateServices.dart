@@ -1,9 +1,11 @@
 
 import 'package:in_app_update/in_app_update.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;   // ✅ NAYA IMPORT
 
 class UpdateService {
   static Future<void> checkForUpdate(BuildContext context) async {
+    if (kIsWeb) return;   // ✅ ADD KARO — web pe update check skip
     try {
       final updateInfo = await InAppUpdate.checkForUpdate();
 

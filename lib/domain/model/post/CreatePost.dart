@@ -8,7 +8,7 @@ abstract class CreatePost with _$CreatePost {
   const factory CreatePost({
     required int id,
     required String title,
-    required String content,
+     String? content,
     required String category,
     required String createdAt,
     required int likesCount,
@@ -18,3 +18,32 @@ abstract class CreatePost with _$CreatePost {
     String? mimeType,
   }) = _CreatePost;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

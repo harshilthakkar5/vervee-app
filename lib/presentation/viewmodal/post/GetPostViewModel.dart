@@ -455,7 +455,8 @@ class GetPostViewModel extends _$GetPostViewModel {
           if (p.id != postId) return p;
           return p.copyWith(
             title:      createdPost.title,
-            content:    createdPost.content,
+           // content:    createdPost.content,
+            content:    createdPost.content ?? p.content,
             category:   createdPost.category,
             filePath:   createdPost.filePath,
             fileType:   createdPost.fileType,

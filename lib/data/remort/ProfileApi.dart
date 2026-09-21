@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:retrofit/retrofit.dart';
 import '../dto/pofile/change_password/ChangePasswordRequest.dart';
 import '../dto/pofile/change_password/ChangePasswordResponse.dart';
+import '../dto/pofile/delete_account/DeleteAccountResponse.dart';
 import '../dto/pofile/get_post/UserFeedPostResponse.dart';
 import '../dto/pofile/my_info/MyInfoResponse.dart';
 import '../dto/pofile/subscription/CustomerPortalResponse.dart';
@@ -70,6 +71,12 @@ abstract class ProfileApi {
   Future<CustomerPortalResponse> getCustomerCheckoutWithPromoUrl(
       @Body() Map<String, dynamic> body,
       );
+
+  // ── 5. Delete Account ────────────────────────────────────────
+  //  POST /v1/auth/delete-account
+  //  No body, Authorization header interceptor se jayega
+  @POST('/v1/auth/delete-account')
+  Future<DeleteAccountResponse> deleteAccount();
 }
 
 

@@ -11,7 +11,7 @@ abstract interface class PostRepository {
   // ── Create Post ────────────────────────────────────────────────────────────
   Future<NetworkResult<CreatePost>> createPost({
     required String title,
-    required String content,
+     String? content,
     required String category,
     File? file,
   });

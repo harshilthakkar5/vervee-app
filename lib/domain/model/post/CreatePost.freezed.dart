@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$CreatePost {
 
- int get id; String get title; String get content; String get category; String get createdAt; int get likesCount; int get userId; String? get filePath; String? get fileType; String? get mimeType;
+ int get id; String get title; String? get content; String get category; String get createdAt; int get likesCount; int get userId; String? get filePath; String? get fileType; String? get mimeType;
 /// Create a copy of CreatePost
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -45,7 +45,7 @@ abstract mixin class $CreatePostCopyWith<$Res>  {
   factory $CreatePostCopyWith(CreatePost value, $Res Function(CreatePost) _then) = _$CreatePostCopyWithImpl;
 @useResult
 $Res call({
- int id, String title, String content, String category, String createdAt, int likesCount, int userId, String? filePath, String? fileType, String? mimeType
+ int id, String title, String? content, String category, String createdAt, int likesCount, int userId, String? filePath, String? fileType, String? mimeType
 });
 
 
@@ -62,12 +62,12 @@ class _$CreatePostCopyWithImpl<$Res>
 
 /// Create a copy of CreatePost
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? title = null,Object? content = null,Object? category = null,Object? createdAt = null,Object? likesCount = null,Object? userId = null,Object? filePath = freezed,Object? fileType = freezed,Object? mimeType = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? title = null,Object? content = freezed,Object? category = null,Object? createdAt = null,Object? likesCount = null,Object? userId = null,Object? filePath = freezed,Object? fileType = freezed,Object? mimeType = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as int,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
-as String,content: null == content ? _self.content : content // ignore: cast_nullable_to_non_nullable
-as String,category: null == category ? _self.category : category // ignore: cast_nullable_to_non_nullable
+as String,content: freezed == content ? _self.content : content // ignore: cast_nullable_to_non_nullable
+as String?,category: null == category ? _self.category : category // ignore: cast_nullable_to_non_nullable
 as String,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as String,likesCount: null == likesCount ? _self.likesCount : likesCount // ignore: cast_nullable_to_non_nullable
 as int,userId: null == userId ? _self.userId : userId // ignore: cast_nullable_to_non_nullable
@@ -159,7 +159,7 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int id,  String title,  String content,  String category,  String createdAt,  int likesCount,  int userId,  String? filePath,  String? fileType,  String? mimeType)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int id,  String title,  String? content,  String category,  String createdAt,  int likesCount,  int userId,  String? filePath,  String? fileType,  String? mimeType)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _CreatePost() when $default != null:
 return $default(_that.id,_that.title,_that.content,_that.category,_that.createdAt,_that.likesCount,_that.userId,_that.filePath,_that.fileType,_that.mimeType);case _:
@@ -180,7 +180,7 @@ return $default(_that.id,_that.title,_that.content,_that.category,_that.createdA
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int id,  String title,  String content,  String category,  String createdAt,  int likesCount,  int userId,  String? filePath,  String? fileType,  String? mimeType)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int id,  String title,  String? content,  String category,  String createdAt,  int likesCount,  int userId,  String? filePath,  String? fileType,  String? mimeType)  $default,) {final _that = this;
 switch (_that) {
 case _CreatePost():
 return $default(_that.id,_that.title,_that.content,_that.category,_that.createdAt,_that.likesCount,_that.userId,_that.filePath,_that.fileType,_that.mimeType);case _:
@@ -200,7 +200,7 @@ return $default(_that.id,_that.title,_that.content,_that.category,_that.createdA
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int id,  String title,  String content,  String category,  String createdAt,  int likesCount,  int userId,  String? filePath,  String? fileType,  String? mimeType)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int id,  String title,  String? content,  String category,  String createdAt,  int likesCount,  int userId,  String? filePath,  String? fileType,  String? mimeType)?  $default,) {final _that = this;
 switch (_that) {
 case _CreatePost() when $default != null:
 return $default(_that.id,_that.title,_that.content,_that.category,_that.createdAt,_that.likesCount,_that.userId,_that.filePath,_that.fileType,_that.mimeType);case _:
@@ -215,12 +215,12 @@ return $default(_that.id,_that.title,_that.content,_that.category,_that.createdA
 
 
 class _CreatePost implements CreatePost {
-  const _CreatePost({required this.id, required this.title, required this.content, required this.category, required this.createdAt, required this.likesCount, required this.userId, this.filePath, this.fileType, this.mimeType});
+  const _CreatePost({required this.id, required this.title, this.content, required this.category, required this.createdAt, required this.likesCount, required this.userId, this.filePath, this.fileType, this.mimeType});
   
 
 @override final  int id;
 @override final  String title;
-@override final  String content;
+@override final  String? content;
 @override final  String category;
 @override final  String createdAt;
 @override final  int likesCount;
@@ -259,7 +259,7 @@ abstract mixin class _$CreatePostCopyWith<$Res> implements $CreatePostCopyWith<$
   factory _$CreatePostCopyWith(_CreatePost value, $Res Function(_CreatePost) _then) = __$CreatePostCopyWithImpl;
 @override @useResult
 $Res call({
- int id, String title, String content, String category, String createdAt, int likesCount, int userId, String? filePath, String? fileType, String? mimeType
+ int id, String title, String? content, String category, String createdAt, int likesCount, int userId, String? filePath, String? fileType, String? mimeType
 });
 
 
@@ -276,12 +276,12 @@ class __$CreatePostCopyWithImpl<$Res>
 
 /// Create a copy of CreatePost
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? title = null,Object? content = null,Object? category = null,Object? createdAt = null,Object? likesCount = null,Object? userId = null,Object? filePath = freezed,Object? fileType = freezed,Object? mimeType = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? title = null,Object? content = freezed,Object? category = null,Object? createdAt = null,Object? likesCount = null,Object? userId = null,Object? filePath = freezed,Object? fileType = freezed,Object? mimeType = freezed,}) {
   return _then(_CreatePost(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as int,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
-as String,content: null == content ? _self.content : content // ignore: cast_nullable_to_non_nullable
-as String,category: null == category ? _self.category : category // ignore: cast_nullable_to_non_nullable
+as String,content: freezed == content ? _self.content : content // ignore: cast_nullable_to_non_nullable
+as String?,category: null == category ? _self.category : category // ignore: cast_nullable_to_non_nullable
 as String,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as String,likesCount: null == likesCount ? _self.likesCount : likesCount // ignore: cast_nullable_to_non_nullable
 as int,userId: null == userId ? _self.userId : userId // ignore: cast_nullable_to_non_nullable

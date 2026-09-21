@@ -1,4 +1,6 @@
 
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -12,6 +14,7 @@ import '../../../utils/AuthService.dart';
 import '../../../utils/NetworkResult.dart';
 import '../../../utils/ProfileCacheService.dart';
 import '../post/CreatePostViewmodel.dart';
+import '../post/GetPostViewModel.dart';
 import 'ProfileState.dart';
 
 part 'ProfileViewmodels.g.dart';
@@ -44,6 +47,8 @@ class ProfileInfoViewModel extends _$ProfileInfoViewModel {
     }
 
     final result = await ref.read(profileRepositoryProvider).getMyInfo();
+
+   // if (!ref.mounted) return;
 
     result.when(
       initial: () {},
@@ -252,6 +257,8 @@ class UserFeedViewModel extends _$UserFeedViewModel {
     final result =
     await ref.read(profileRepositoryProvider).getUserFeedPosts();
 
+   // if (!ref.mounted) return;
+
     result.when(
       initial: () {},
       loading: () {},
@@ -357,7 +364,97 @@ class UserFeedViewModel extends _$UserFeedViewModel {
       },
     );
   }
+
+  // ✅ NEW — Profile posts ke liye dedicated deletePost, GetPostViewModel se independent
+  Future<String?> deletePost(int postId) async {
+    final index = state.posts.indexWhere((p) => p.id == postId);
+    if (index == -1) return 'Post not found';
+
+    final postToDelete = state.posts[index];
+
+    // Optimistic remove
+    final updatedPosts = state.posts.where((p) => p.id != postId).toList();
+    state = state.copyWith(posts: updatedPosts);
+
+    final result = await ref.read(postRepositoryProvider).deletePost(postId);
+
+    return result.when(
+      initial: () => null,
+      loading: () => null,
+      success: (_) => null, // ✅ success — local list already updated
+      error: (message, _) {
+        // Rollback — post wapas original position pe daalo
+        final restored = List.of(state.posts);
+        restored.insert(index.clamp(0, restored.length), postToDelete);
+        state = state.copyWith(posts: restored);
+        return message;
+      },
+    );
+  }
+
+
+  // ✅ NEW — Profile posts ke liye dedicated updatePost, GetPostViewModel se independent
+  Future<String?> updatePost({
+    required int postId,
+    String? title,
+    String? content,
+    String? category,
+    File?   file,
+  }) async {
+    final index = state.posts.indexWhere((p) => p.id == postId);
+    if (index == -1) return 'Post not found';
+
+    final oldPost = state.posts[index];
+
+    // Optimistic update
+    final optimistic = [...state.posts];
+    optimistic[index] = oldPost.copyWith(
+      title:    title    ?? oldPost.title,
+      content:  content  ?? oldPost.content,
+      category: category ?? oldPost.category,
+    );
+    state = state.copyWith(posts: optimistic);
+
+    final result = await ref.read(postRepositoryProvider).updatePost(
+      postId:   postId,
+      title:    title,
+      content:  content,
+      category: category,
+      file:     file,
+    );
+
+    return result.when(
+      initial: () => null,
+      loading: () => null,
+      success: (createdPost) {
+        final synced = [...state.posts];
+        final i = synced.indexWhere((p) => p.id == postId);
+        if (i != -1) {
+          synced[i] = synced[i].copyWith(
+            title:      createdPost.title,
+            content:    createdPost.content ?? synced[i].content,
+            category:   createdPost.category,
+            filePath:   createdPost.filePath,
+            fileType:   createdPost.fileType,
+            likesCount: createdPost.likesCount,
+          );
+          state = state.copyWith(posts: synced);
+        }
+        // ✅ Home feed bhi sync karo taaki HomeScreen pe bhi updated dikhe
+        ref.read(getPostViewModelProvider.notifier).refresh();
+        return null;
+      },
+      error: (message, _) {
+        final rolled = [...state.posts];
+        final i = rolled.indexWhere((p) => p.id == postId);
+        if (i != -1) rolled[i] = oldPost;
+        state = state.copyWith(posts: rolled);
+        return message;
+      },
+    );
+  }
 }
+
 
 // ════════════════════════════════════════════════════════════════════
 //  3. For Subscription
@@ -389,6 +486,8 @@ class SubscriptionViewModel extends _$SubscriptionViewModel {
 
     final result =
     await ref.read(profileRepositoryProvider).getMySubscription();
+
+   // if (!ref.mounted) return;
 
     result.when(
       initial: () {},
@@ -651,6 +750,52 @@ class SubscriptionViewModel extends _$SubscriptionViewModel {
     state = state.copyWith(promoCheckoutErrorMessage: null);
   }
 
+}
+
+
+// ════════════════════════════════════════════════════════════════════
+//  Delete Account ViewModel
+//     - SettingsScreen ke "Yes, Delete" button pe call hota hai
+// ════════════════════════════════════════════════════════════════════
+@riverpod
+class DeleteAccountViewModel extends _$DeleteAccountViewModel {
+
+  @override
+  DeleteAccountState build() => const DeleteAccountState();
+
+  Future<void> deleteAccount() async {
+    if (state.isLoading) return;
+
+    state = state.copyWith(
+      isLoading: true,
+      errorMessage: null,
+      successMessage: null,
+    );
+
+    final result = await ref.read(profileRepositoryProvider).deleteAccount();
+
+    result.when(
+      initial: () {},
+      loading: () {},
+      success: (res) {
+        state = state.copyWith(
+          isLoading: false,
+          successMessage: res.message, // "Account deactivated successfully"
+          isDeleted: true,
+        );
+      },
+      error: (message, _) {
+        state = state.copyWith(
+          isLoading: false,
+          errorMessage: message,
+        );
+      },
+    );
+  }
+
+  void clearMessages() {
+    state = state.copyWith(errorMessage: null, successMessage: null);
+  }
 }
 
 

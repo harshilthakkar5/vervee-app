@@ -64,6 +64,17 @@ sealed class SubscriptionState with _$SubscriptionState {
   }) = _SubscriptionState;
 }
 
+// ── Delete Account State (POST /v1/auth/delete-account) ─────────────
+@freezed
+sealed class DeleteAccountState with _$DeleteAccountState {
+  const factory DeleteAccountState({
+    @Default(false) bool isLoading,
+    String?              errorMessage,
+    String?              successMessage,
+    @Default(false) bool isDeleted,   // ✅ true hote hi UI logout+navigate trigger karega
+  }) = _DeleteAccountState;
+}
+
 
 
 

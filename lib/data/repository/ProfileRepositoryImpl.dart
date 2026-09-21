@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 
 import '../../domain/model/profile/ChangePasswordResult.dart';
 import '../../domain/model/profile/CustomerPortalResult.dart';
+import '../../domain/model/profile/DeleteAccountResult.dart';
 import '../../domain/model/profile/SubscriptionInfo.dart';
 import '../../domain/model/profile/UserFeedPost.dart';
 import '../../domain/model/profile/UserProfile.dart';
@@ -155,6 +156,22 @@ class ProfileRepositoryImpl implements ProfileRepository {
     try {
       //final response = await _profileApi.getCustomerCheckoutWithPromoUrl(promoCode);
       final response = await _profileApi.getCustomerCheckoutWithPromoUrl({'referralCode': promoCode});
+      return NetworkResult.success(response.toDomain());
+    } on DioException catch (e) {
+      return NetworkResult.error(
+        message: _parseDioError(e),
+        statusCode: e.response?.statusCode,
+      );
+    } catch (e) {
+      return NetworkResult.error(message: 'Unexpected error: $e');
+    }
+  }
+
+  // ── 5. Delete Account ────────────────────────────────────────────
+  @override
+  Future<NetworkResult<DeleteAccountResult>> deleteAccount() async {
+    try {
+      final response = await _profileApi.deleteAccount();
       return NetworkResult.success(response.toDomain());
     } on DioException catch (e) {
       return NetworkResult.error(

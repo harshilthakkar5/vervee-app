@@ -84,11 +84,11 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
     'Geopolitics',
     'Economic Policy',
     'Market Volatility',
-    'Other',
+   // 'Other',
   ];
 
   final List<MediaItem> _media = [];
-  bool _isExpanded = false;
+  bool _isExpanded = true;
 
   late AnimationController _fabAnim;
   late Animation<double>   _fabScale;
@@ -146,8 +146,23 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
   }
 
   Future<void> _publish() async {
+    // final title = _titleCtrl.text.trim();
+    // if (title.isEmpty) { _snack('Add a Title to your post', isError: true); return; }
+
     final title = _titleCtrl.text.trim();
-    if (title.isEmpty) { _snack('Add a caption to your post', isError: true); return; }
+
+    if (title.isEmpty) {
+      _snack('Add a Title to your post', isError: true);
+      return;
+    }
+    if (title.length < 3) {
+      _snack('Title must be at least 3 characters', isError: true);
+      return;
+    }
+    if (title.length > 100) {
+      _snack('Title can be at most 100 characters', isError: true);
+      return;
+    }
 
     final plain = _quillCtrl.document.toPlainText().trim();
     if (plain.isEmpty || plain == '\n') {
@@ -174,6 +189,54 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
       file: _media.isNotEmpty ? File(_media.first.path) : null,
     );
   }
+
+  // Future<void> _publish() async {
+  //   final title = _titleCtrl.text.trim();
+  //
+  //   if (title.isEmpty) {
+  //     _snack('Add a Title to your post', isError: true);
+  //     return;
+  //   }
+  //   if (title.length < 3) {
+  //     _snack('Title must be at least 3 characters', isError: true);
+  //     return;
+  //   }
+  //   if (title.length > 100) {
+  //     _snack('Title can be at most 100 characters', isError: true);
+  //     return;
+  //   }
+  //
+  //   // ❌ Yeh block hata do — content ab optional hai
+  //   // final plain = _quillCtrl.document.toPlainText().trim();
+  //   // if (plain.isEmpty || plain == '\n') {
+  //   //   _snack('Write something in your post content', isError: true); return;
+  //   // }
+  //
+  //   if (_media.isNotEmpty) {
+  //     final sizeMB = await File(_media.first.path).length() / (1024 * 1024);
+  //     if (sizeMB > 100) {
+  //       _snack('Image too large (${sizeMB.toStringAsFixed(1)}MB). Max 5MB.', isError: true);
+  //       return;
+  //     }
+  //   }
+  //
+  //   HapticFeedback.mediumImpact();
+  //
+  //   final plain = _quillCtrl.document.toPlainText().trim();
+  //   final isContentEmpty = plain.isEmpty || plain == '\n';
+  //
+  //   final deltaJson = _quillCtrl.document.toDelta().toJson();
+  //   final html      = QuillDeltaToHtmlConverter(
+  //     List.castFrom(deltaJson), ConverterOptions(),
+  //   ).convert();
+  //
+  //   await ref.read(createPostViewModelProvider.notifier).createPost(
+  //     title: title,
+  //     content: isContentEmpty ? null : html,   // ✅ empty hone par null bhejo
+  //     category: _category,
+  //     file: _media.isNotEmpty ? File(_media.first.path) : null,
+  //   );
+  // }
 
   void _snack(String msg, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -239,13 +302,22 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
                       onAdd: _pickImage,
                       onRemove: (i) => setState(() => _media.removeAt(i)),
                     ),
+                    // _CaptionRow(controller: _titleCtrl),
+                    // const _HairlineDivider(),
+                    // _CategoryRow(
+                    //   value: _category, items: _categories,
+                    //   onChanged: (v) => setState(() => _category = v),
+                    // ),
+                    // const _HairlineDivider(),
                     _CaptionRow(controller: _titleCtrl),
                     const _HairlineDivider(),
-                    _CategoryRow(
-                      value: _category, items: _categories,
-                      onChanged: (v) => setState(() => _category = v),
-                    ),
-                    const _HairlineDivider(),
+                    if (_media.isEmpty || !_media.first.isImage) ...[
+                      _CategoryRow(
+                        value: _category, items: _categories,
+                        onChanged: (v) => setState(() => _category = v),
+                      ),
+                      const _HairlineDivider(),
+                    ],
                    // _AttachRow(onFile: _pickFile, onImage: _pickImage),
                     const _HairlineDivider(),
                     _ContentSection(
@@ -615,14 +687,30 @@ class _CaptionRow extends StatelessWidget {
               color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16))),
         ),
         const SizedBox(width: 12),
+        // Expanded(
+        //   child: TextField(
+        //     controller: controller,
+        //     style: const TextStyle(color: _C.textPri, fontSize: 15, height: 1.45),
+        //     maxLines: null,
+        //     textInputAction: TextInputAction.newline,
+        //     decoration: const InputDecoration(
+        //       hintText: 'Write a caption...',
+        //       hintStyle: TextStyle(color: _C.textTer, fontSize: 15),
+        //       border: InputBorder.none, contentPadding: EdgeInsets.zero, isDense: true,
+        //     ),
+        //   ),
+        // ),
         Expanded(
           child: TextField(
             controller: controller,
             style: const TextStyle(color: _C.textPri, fontSize: 15, height: 1.45),
             maxLines: null,
+            maxLength: 100,
+            buildCounter: (context, {required currentLength, required isFocused, maxLength}) =>
+            null, // counter hide — sirf hard limit ke liye use ho raha hai
             textInputAction: TextInputAction.newline,
             decoration: const InputDecoration(
-              hintText: 'Write a caption...',
+              hintText: 'Write a Title...',
               hintStyle: TextStyle(color: _C.textTer, fontSize: 15),
               border: InputBorder.none, contentPadding: EdgeInsets.zero, isDense: true,
             ),

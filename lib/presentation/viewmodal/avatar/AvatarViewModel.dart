@@ -65,6 +65,8 @@ class AvatarViewModel extends _$AvatarViewModel {
         .read(avatarRepositoryProvider)
         .getUserInfo(userId: await _userId);
 
+   // if (!ref.mounted) return;
+
     result.when(
       initial: () {},
       loading: () {},
@@ -110,6 +112,8 @@ class AvatarViewModel extends _$AvatarViewModel {
       mascotId:   mascotId,
       avatarFile: avatarFile,
     );
+
+   // if (!ref.mounted) return;
 
     result.when(
       initial: () {},
@@ -158,6 +162,8 @@ class AvatarViewModel extends _$AvatarViewModel {
       selectedItems: selectedItems,
       customPrompt:  customPrompt,
     );
+
+   // if (!ref.mounted) return;
 
     result.when(
       initial: () {},

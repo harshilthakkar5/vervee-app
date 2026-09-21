@@ -25,7 +25,7 @@ class PostRepositoryImpl implements PostRepository {
   @override
   Future<NetworkResult<CreatePost>> createPost({
     required String title,
-    required String content,
+    String? content,
     required String category,
     File? file,
   }) async {

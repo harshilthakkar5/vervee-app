@@ -323,44 +323,114 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen> {
     );
   }
 
+  // Widget _buildVideoContent(LectureModel lecture) {
+  //   // ── Video initialized — show karo ──────────────────────────
+  //   if (_videoInitialized && _videoController != null) {
+  //     return Stack(fit: StackFit.expand, children: [
+  //       FittedBox(
+  //         fit: BoxFit.cover,
+  //         child: SizedBox(
+  //           width:  _videoController!.value.size.width,
+  //           height: _videoController!.value.size.height,
+  //           child:  VideoPlayer(_videoController!),
+  //         ),
+  //       ),
+  //       // Pause overlay
+  //       if (!_videoController!.value.isPlaying)
+  //         Container(
+  //           color: Colors.black.withOpacity(0.35),
+  //           child: const Center(
+  //             child: Icon(Icons.play_circle_outline_rounded,
+  //                 color: Colors.white, size: 56),
+  //           ),
+  //         ),
+  //     ]);
+  //   }
+  //
+  //   // ── Error ──────────────────────────────────────────────────
+  //   if (_videoError) {
+  //     return Container(
+  //       color: kBgCard,
+  //       child: const Center(
+  //         child: Column(mainAxisSize: MainAxisSize.min, children: [
+  //           Icon(Icons.broken_image_outlined, color: kTextMuted, size: 40),
+  //           SizedBox(height: 8),
+  //           Text('Video unavailable',
+  //               style: TextStyle(color: kTextMuted, fontSize: 12)),
+  //         ]),
+  //       ),
+  //     );
+  //   }
+  //
+  //   // ── Loading / placeholder ──────────────────────────────────
+  //   return Container(
+  //     decoration: BoxDecoration(gradient: widget.gradient),
+  //     child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+  //       const Text('VERVEE',
+  //           style: TextStyle(
+  //               color: kGold, fontSize: 14,
+  //               fontWeight: FontWeight.w900, letterSpacing: 3)),
+  //       const Text('A C A D E M Y',
+  //           style: TextStyle(
+  //               color: kPurpleLight, fontSize: 7, letterSpacing: 3)),
+  //       const SizedBox(height: 14),
+  //       if (_videoController == null && (lecture.contentUpload.isEmpty))
+  //         const Icon(Icons.play_circle_outline_rounded,
+  //             color: Colors.white54, size: 44)
+  //       else
+  //         const SizedBox(
+  //           width: 32, height: 32,
+  //           child: CircularProgressIndicator(color: kGold, strokeWidth: 2),
+  //         ),
+  //     ]),
+  //   );
+  // }
+
   Widget _buildVideoContent(LectureModel lecture) {
     // ── Video initialized — show karo ──────────────────────────
     if (_videoInitialized && _videoController != null) {
-      return Stack(fit: StackFit.expand, children: [
-        FittedBox(
-          fit: BoxFit.cover,
-          child: SizedBox(
-            width:  _videoController!.value.size.width,
-            height: _videoController!.value.size.height,
-            child:  VideoPlayer(_videoController!),
-          ),
-        ),
-        // Pause overlay
-        if (!_videoController!.value.isPlaying)
-          Container(
-            color: Colors.black.withOpacity(0.35),
-            child: const Center(
-              child: Icon(Icons.play_circle_outline_rounded,
-                  color: Colors.white, size: 56),
-            ),
-          ),
-        // Fullscreen button
-        Positioned(
-          top: 10, right: 10,
-          child: GestureDetector(
-            onTap: _openFullscreen,
-            child: Container(
-              width: 32, height: 32,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.black.withOpacity(0.5),
+      // ✅ NAYA: ValueListenableBuilder se wrap kiya — ab controller ki
+      // value change hone pe (isPlaying, isBuffering, position, etc.)
+      // yeh Stack automatically rebuild hoga.
+      return ValueListenableBuilder(
+        valueListenable: _videoController!,
+        builder: (context, value, child) {
+          return Stack(fit: StackFit.expand, children: [
+            FittedBox(
+              fit: BoxFit.cover,
+              child: SizedBox(
+                width:  value.size.width,
+                height: value.size.height,
+                child:  VideoPlayer(_videoController!),
               ),
-              child: const Icon(Icons.fullscreen_rounded,
-                  color: Colors.white, size: 18),
             ),
-          ),
-        ),
-      ]);
+            // Pause overlay — sirf tab dikhao jab buffering na ho rahi ho
+            if (!value.isPlaying && !value.isBuffering)
+              Container(
+                color: Colors.black.withOpacity(0.35),
+                child: const Center(
+                  child: Icon(Icons.play_circle_outline_rounded,
+                      color: Colors.white, size: 56),
+                ),
+              ),
+            // ✅ NAYA: Buffering loader — seek/forward pe data load hote waqt dikhega
+            if (value.isBuffering)
+              Container(
+                color: Colors.black.withOpacity(0.35),
+                child: const Center(
+                  child: SizedBox(
+                    width: 40,
+                    height: 40,
+                    child: CircularProgressIndicator(
+                      color: kGold,
+                      strokeWidth: 3,
+                    ),
+                  ),
+                ),
+              ),
+          ]);
+        },
+      );
     }
 
     // ── Error ──────────────────────────────────────────────────
@@ -1017,6 +1087,28 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage> {
               child: VideoPlayer(widget.controller),
             ),
           ),
+
+          // ✅ NAYA: Buffering loader — fullscreen me bhi dikhega
+          ValueListenableBuilder(
+            valueListenable: widget.controller,
+            builder: (_, value, __) {
+              if (!value.isBuffering) return const SizedBox.shrink();
+              return Container(
+                color: Colors.black.withOpacity(0.35),
+                child: const Center(
+                  child: SizedBox(
+                    width: 44,
+                    height: 44,
+                    child: CircularProgressIndicator(
+                      color: kGold,
+                      strokeWidth: 3,
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+
           if (_showControls)
             Container(
               decoration: BoxDecoration(

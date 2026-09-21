@@ -46,20 +46,26 @@ const categories = [
 ];
 
 // ── Entry point ───────────────────────────────────────────────────────────────
-void showEditPostSheet(BuildContext context, WidgetRef ref, GetPost post) {
+void showEditPostSheet(
+    BuildContext context,
+    WidgetRef ref,
+    GetPost post, {
+bool isFromProfile = false, // ✅ NEW — batata hai konsa viewmodel use karna hai
+}) {
   showModalBottomSheet(
     context:            context,
     backgroundColor:    Colors.transparent,
     isScrollControlled: true,
-    builder:            (_) => _EditPostSheet(post: post, ref: ref),
+    builder:            (_) => _EditPostSheet(post: post, ref: ref, isFromProfile: isFromProfile,),
   );
 }
 
 class _EditPostSheet extends StatefulWidget {
   final GetPost   post;
   final WidgetRef ref;
+  final bool      isFromProfile; // ✅ NEW
 
-  const _EditPostSheet({required this.post, required this.ref});
+  const _EditPostSheet({required this.post, required this.ref, this.isFromProfile = false,});
 
   @override
   State<_EditPostSheet> createState() => _EditPostSheetState();
@@ -105,6 +111,61 @@ class _EditPostSheetState extends State<_EditPostSheet> {
     }
   }
 
+  // Future<void> _save() async {
+  //   final title   = _titleCtrl.text.trim();
+  //   final content = _contentCtrl.text.trim();
+  //
+  //   if (title.isEmpty || content.isEmpty) {
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       const SnackBar(
+  //         content:         Text('Title and content are required.'),
+  //         backgroundColor: Color(0xFFEF4444),
+  //       ),
+  //     );
+  //     return;
+  //   }
+  //
+  //   setState(() => _saving = true);
+  //
+  //   final error = await widget.ref
+  //       .read(getPostViewModelProvider.notifier)
+  //       .updatePost(
+  //     postId:   widget.post.id,
+  //     title:    title,
+  //     // ✅ Backend HTML expect karta hai — wrap karo
+  //     content:  '<p>$content</p>',
+  //     category: _selectedCategory,
+  //     file:     _newImage,
+  //   );
+  //
+  //   // ✅ Step 3 — FeedDetailScreen refresh karo (YE NAHI THA — isliye instant update nahi ho raha tha)
+  //   widget.ref
+  //       .read(userFeedViewModelProvider.notifier)
+  //       .refresh();
+  //
+  //   if (!mounted) return;
+  //   setState(() => _saving = false);
+  //
+  //   if (error == null) {
+  //     // ✅ Success — sheet band karo
+  //     Navigator.pop(context);
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       const SnackBar(
+  //         content:         Text('Post updated successfully!'),
+  //         backgroundColor: Color(0xFF22C55E),
+  //       ),
+  //     );
+  //   } else {
+  //     // ✅ Error snackbar
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(
+  //         content:         Text('Update failed: $error'),
+  //         backgroundColor: const Color(0xFFEF4444),
+  //       ),
+  //     );
+  //   }
+  // }
+
   Future<void> _save() async {
     final title   = _titleCtrl.text.trim();
     final content = _contentCtrl.text.trim();
@@ -121,27 +182,36 @@ class _EditPostSheetState extends State<_EditPostSheet> {
 
     setState(() => _saving = true);
 
-    final error = await widget.ref
-        .read(getPostViewModelProvider.notifier)
-        .updatePost(
-      postId:   widget.post.id,
-      title:    title,
-      // ✅ Backend HTML expect karta hai — wrap karo
-      content:  '<p>$content</p>',
-      category: _selectedCategory,
-      file:     _newImage,
-    );
-
-    // ✅ Step 3 — FeedDetailScreen refresh karo (YE NAHI THA — isliye instant update nahi ho raha tha)
-    widget.ref
-        .read(userFeedViewModelProvider.notifier)
-        .refresh();
+    // ✅ CHANGED — source ke hisaab se sahi viewmodel choose karo
+    final String? error;
+    if (widget.isFromProfile) {
+      error = await widget.ref
+          .read(userFeedViewModelProvider.notifier)
+          .updatePost(
+        postId:   widget.post.id,
+        title:    title,
+        content:  '<p>$content</p>',
+        category: _selectedCategory,
+        file:     _newImage,
+      );
+    } else {
+      error = await widget.ref
+          .read(getPostViewModelProvider.notifier)
+          .updatePost(
+        postId:   widget.post.id,
+        title:    title,
+        content:  '<p>$content</p>',
+        category: _selectedCategory,
+        file:     _newImage,
+      );
+      // ✅ Home se edit hua ho tab bhi Profile feed sync karo
+      widget.ref.read(userFeedViewModelProvider.notifier).refresh();
+    }
 
     if (!mounted) return;
     setState(() => _saving = false);
 
     if (error == null) {
-      // ✅ Success — sheet band karo
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -150,7 +220,6 @@ class _EditPostSheetState extends State<_EditPostSheet> {
         ),
       );
     } else {
-      // ✅ Error snackbar
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content:         Text('Update failed: $error'),

@@ -49,6 +49,8 @@ Dio dio(Ref ref) {
   // dio.interceptors.add(LogInterceptor(requestBody: true, responseBody: true));
   // return dio;
 
+  bool isHandlingAuthError = false;
+
   dio.interceptors.add(
     InterceptorsWrapper(
       // ✅ FIX 1: onRequest async banana zaroori hai — getToken() awaitable hai
@@ -75,13 +77,35 @@ Dio dio(Ref ref) {
       },
 
       // ← Bas yeh onError block add karo, baaki sab same hai
+      // onError: (DioException err, ErrorInterceptorHandler handler) async {
+      //   if (err.response?.statusCode == 401) {
+      //     await AuthService.instance.logout(keepCredentials: true);
+      //     appNavigatorKey.currentState?.pushAndRemoveUntil(
+      //       MaterialPageRoute(builder: (_) => const LoginScreen()),
+      //           (route) => false,
+      //     );
+      //   }
+      //   handler.next(err);
+      // },
       onError: (DioException err, ErrorInterceptorHandler handler) async {
-        if (err.response?.statusCode == 401) {
-          await AuthService.instance.logout(keepCredentials: true);
-          appNavigatorKey.currentState?.pushAndRemoveUntil(
-            MaterialPageRoute(builder: (_) => const LoginScreen()),
-                (route) => false,
-          );
+        if (err.response?.statusCode == 401 && !isHandlingAuthError) {
+          isHandlingAuthError = true;
+
+          // Check if we are already at LoginScreen to avoid redundant navigation
+          final context = appNavigatorKey.currentContext;
+          bool isAlreadyOnLogin = false;
+          if (context != null) {
+            ModalRoute.of(context)?.settings.name == '/LoginScreen';
+          }
+
+          if (!isAlreadyOnLogin) {
+            await AuthService.instance.logout(keepCredentials: true);
+            appNavigatorKey.currentState?.pushAndRemoveUntil(
+              MaterialPageRoute(builder: (_) => const LoginScreen()),
+              (route) => false,
+            );
+          }
+          isHandlingAuthError = false;
         }
         handler.next(err);
       },

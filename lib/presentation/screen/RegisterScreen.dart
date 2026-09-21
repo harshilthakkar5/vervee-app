@@ -1,7 +1,9 @@
 import 'dart:math' as math;
 import 'package:country_picker/country_picker.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:vervee_app/presentation/screen/OtpScreen.dart';
     //hide WavePainter, Particle, ParticlePainter;
 
@@ -45,6 +47,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
   final _confirmCtrl  = TextEditingController();
   final _phoneCtrl    = TextEditingController();
   final _ageCtrl      = TextEditingController();
+  DateTime? _selectedDob;
+  Country? _phoneCountry;
   // Note: Country aur Gender ke liye controller nahi chahiye
   // kyunki woh dropdown hain — _selectedCountry/_selectedGender
   // already State variables hain
@@ -71,6 +75,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
 
   final List<String> _genders = ['Male', 'Female', 'Other', 'Prefer not to say'];
 
+  // ── Har policy ka apna URL — apne actual URLs se replace karo
+  static const String _privacyTermsUrl        = 'https://app.theverveeacademy.com/pdf/Vervee_Academy_Disclaimer.pdf';
+  static const String _analysisDisclaimerUrl  = 'https://app.theverveeacademy.com/pdf/Vervee_Academy_Analysis_Disclaimer.pdf';
+  static const String _comprehensiveDisclaimerUrl = 'https://app.theverveeacademy.com/pdf/Vervee_Academy_Comprehensive_Legal_Disclaimers.pdf';
+  static const String _legalDisclaimerUrl     = 'https://app.theverveeacademy.com/pdf/Vervee_Academy_Legal_Disclaimer.pdf';
+
   final List<Particle> _particles = List.generate(55, (i) {
     final rng = math.Random(i * 17 + 3);
     return Particle(
@@ -88,6 +98,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
 
     // All Country
     _countries = CountryService().getAll();
+    _phoneCountry = Country.parse('US');   // ← default dial code +91
 
     _particleCtrl =
     AnimationController(vsync: this, duration: const Duration(seconds: 12))..repeat();
@@ -102,6 +113,29 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
     _slideIn = Tween<Offset>(begin: const Offset(0, 0.06), end: Offset.zero)
         .animate(CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOut));
     Future.delayed(const Duration(milliseconds: 100), () => _entryCtrl.forward());
+  }
+
+
+  // ── State class ke andar (dispose() se pehle) ye method add karo:
+// Ek hi jagah se URL launch karega, error handling ke saath
+  Future<void> _openPolicyLink(String url) async {
+    final uri = Uri.parse(url);
+    final launched = await launchUrl(
+      uri,
+      mode: LaunchMode.externalApplication,   // ← Chrome / default browser mein khulega
+    );
+    if (!launched && mounted) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text('Could not open link: $url'),
+            backgroundColor: Colors.red.shade700,
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+    }
   }
 
   @override
@@ -139,7 +173,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
       age:             _ageCtrl.text,
       country:         _selectedCountry?.name ?? '',  // ✅ FIX   // dropdown value
       gender:          _selectedGender  ?? 'Male',   // dropdown value
-      phoneNo:         _phoneCtrl.text,
+      //phoneNo:         _phoneCtrl.text,
+      phoneNo: '+${_phoneCountry?.phoneCode ?? '91'}${_phoneCtrl.text.trim()}',
       terms:           _agreeToTerms,
     );
   }
@@ -342,46 +377,46 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
           // ),
 
 
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: bottomBarHeight,
-            child: IgnorePointer(   // ← wrap karo
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Positioned.fill(
-                    child: AnimatedBuilder(
-                      animation: _waveCtrl,
-                      builder: (_, __) =>
-                          CustomPaint(painter: WavePainter(_waveCtrl.value)),
-                    ),
-                  ),
-                  // Positioned(
-                  //   bottom: bottomBarHeight * 0.15,
-                  //   left: screenWidth * 0.04,
-                  //   child: GoldCoin(size: screenHeight * 0.05),
-                  // ),
-                  // Positioned(
-                  //   bottom: bottomBarHeight * 0.1,
-                  //   right: screenWidth * 0.04,
-                  //   child: GoldCoin(size: screenHeight * 0.06),
-                  // ),
-                  // Positioned(
-                  //   bottom: bottomBarHeight * 0.2,
-                  //   left: screenWidth * 0.2,
-                  //   child: CandleStick(),
-                  // ),
-                  // Positioned(
-                  //   bottom: bottomBarHeight * 0.15,
-                  //   right: screenWidth * 0.2,
-                  //   child: CandleStick(),
-                  // ),
-                ],
-              ),
-            ),
-          ),
+          // Positioned(
+          //   bottom: 0,
+          //   left: 0,
+          //   right: 0,
+          //   height: bottomBarHeight,
+          //   child: IgnorePointer(   // ← wrap karo
+          //     child: Stack(
+          //       clipBehavior: Clip.none,
+          //       children: [
+          //         Positioned.fill(
+          //           child: AnimatedBuilder(
+          //             animation: _waveCtrl,
+          //             builder: (_, __) =>
+          //                 CustomPaint(painter: WavePainter(_waveCtrl.value)),
+          //           ),
+          //         ),
+          //         // Positioned(
+          //         //   bottom: bottomBarHeight * 0.15,
+          //         //   left: screenWidth * 0.04,
+          //         //   child: GoldCoin(size: screenHeight * 0.05),
+          //         // ),
+          //         // Positioned(
+          //         //   bottom: bottomBarHeight * 0.1,
+          //         //   right: screenWidth * 0.04,
+          //         //   child: GoldCoin(size: screenHeight * 0.06),
+          //         // ),
+          //         // Positioned(
+          //         //   bottom: bottomBarHeight * 0.2,
+          //         //   left: screenWidth * 0.2,
+          //         //   child: CandleStick(),
+          //         // ),
+          //         // Positioned(
+          //         //   bottom: bottomBarHeight * 0.15,
+          //         //   right: screenWidth * 0.2,
+          //         //   child: CandleStick(),
+          //         // ),
+          //       ],
+          //     ),
+          //   ),
+          // ),
 
           // ── 4. Main scrollable content
           SafeArea(
@@ -460,7 +495,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                                   ),
                                 ),
                               ),
-                              SizedBox(height: screenHeight * 0.005),
+                              SizedBox(height: screenHeight * 0.006),
+                             // SizedBox(height: screenHeight * 0.006),
                               Center(
                                 child: Text(
                                   'Enter your details to register',
@@ -471,10 +507,29 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                                 ),
                               ),
 
+                              SizedBox(height: screenHeight * 0.006),
+                              SizedBox(height: screenHeight * 0.006),
+                              SizedBox(height: screenHeight * 0.006),
+                              SizedBox(height: screenHeight * 0.006),
+
+                              Center(
+                                child: Text(
+                                  'SKILL · HUSTLE · PROSPER',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: const Color(0xFFD4AF37).withOpacity(0.8),
+                                    //fontSize: size.height * 0.014,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 1.2,
+                                  ),
+                                ),
+                              ),
+
                               SizedBox(height: screenHeight * 0.028),
 
                               // ── Name
-                              _fieldLabel('Name'),
+                              _fieldLabel('Name',isRequired: true),
                               SizedBox(height: screenHeight * 0.008),
                                GlowTextField(
                                 controller: _nameCtrl,   // ← controller wired
@@ -485,7 +540,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                               SizedBox(height: screenHeight * 0.016),
 
                               // ── Email
-                              _fieldLabel('Email'),
+                              _fieldLabel('Email', isRequired: true),
                               SizedBox(height: screenHeight * 0.008),
                               GlowTextField(
                                 controller: _emailCtrl,    // ← NAYA
@@ -497,7 +552,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                               SizedBox(height: screenHeight * 0.016),
 
                               // ── Password
-                              _fieldLabel('Password'),
+                              _fieldLabel('Password', isRequired: true),
                               SizedBox(height: screenHeight * 0.008),
                                 GlowTextField(
                                 controller: _passwordCtrl, // ← controller wired
@@ -509,7 +564,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                               SizedBox(height: screenHeight * 0.016),
 
                               // ── Confirm Password
-                              _fieldLabel('Confirm Password'),
+                              _fieldLabel('Confirm Password', isRequired: true),
                               SizedBox(height: screenHeight * 0.008),
                                 GlowTextField(
                                 controller: _confirmCtrl,  // ← controller wired
@@ -521,7 +576,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                               SizedBox(height: screenHeight * 0.016),
 
                               // ── Country Dropdown
-                              _fieldLabel('Country'),
+                              _fieldLabel('Country', isRequired: true),
                               SizedBox(height: screenHeight * 0.008),
                               GlowDropdownCountry(
                                 hint: 'Select your country',
@@ -535,25 +590,84 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                               SizedBox(height: screenHeight * 0.016),
 
                               // ── Phone Number
-                              _fieldLabel('Phone Number'),
+                              // ── Phone Number
+                              _fieldLabel('Phone Number', isRequired: true),
                               SizedBox(height: screenHeight * 0.008),
-                                GlowTextField(
-                                controller: _phoneCtrl,  // ← controller wired
-                                hint: '1234567890',
-                                prefixIcon: Icons.phone_outlined,
-                                keyboardType: TextInputType.phone,
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // ── Country code button (flag + dial code)
+                                  GestureDetector(
+                                    onTap: _pickPhoneCountryCode,
+                                    child: Container(
+                                      height: 54,
+                                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.09),
+                                        borderRadius: BorderRadius.circular(14),
+                                        border: Border.all(color: Colors.white.withOpacity(0.15), width: 1.2),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(_phoneCountry?.flagEmoji ?? '🌐', style: const TextStyle(fontSize: 20)),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            '+${_phoneCountry?.phoneCode ?? '91'}',
+                                            style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                                          ),
+                                          Icon(Icons.arrow_drop_down_rounded, color: Colors.white.withOpacity(0.6), size: 18),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  // ── Number field
+                                  Expanded(
+                                    child: GlowTextField(
+                                      controller: _phoneCtrl,
+                                      hint: '1234567890',
+                                      prefixIcon: Icons.phone_outlined,
+                                      keyboardType: TextInputType.phone,
+                                    ),
+                                  ),
+                                ],
                               ),
+
+
+                              // _fieldLabel('Phone Number', isRequired: true),
+                              // SizedBox(height: screenHeight * 0.008),
+                              //   GlowTextField(
+                              //   controller: _phoneCtrl,  // ← controller wired
+                              //   hint: '1234567890',
+                              //   prefixIcon: Icons.phone_outlined,
+                              //   keyboardType: TextInputType.phone,
+                              // ),
 
                               SizedBox(height: screenHeight * 0.016),
 
                               // ── Age
-                              _fieldLabel('Age'),
+                              // _fieldLabel('Age', isRequired: true),
+                              // SizedBox(height: screenHeight * 0.008),
+                              //   GlowTextField(
+                              //   controller: _ageCtrl,
+                              //   hint: 'Enter your age',
+                              //   prefixIcon: Icons.cake_outlined,
+                              //   keyboardType: TextInputType.number,
+                              // ),
+
+                              _fieldLabel('Age', isRequired: true),
                               SizedBox(height: screenHeight * 0.008),
-                                GlowTextField(
-                                controller: _ageCtrl,
-                                hint: 'Enter your age',
-                                prefixIcon: Icons.cake_outlined,
-                                keyboardType: TextInputType.number,
+                              GestureDetector(
+                                onTap: _pickDateOfBirth,
+                                child: AbsorbPointer(   // ← keyboard nahi khulega, sirf calendar khulega
+                                  child: GlowTextField(
+                                    controller: _ageCtrl,
+                                    hint: 'Select date of birth to auto-fill age',
+                                    prefixIcon: Icons.cake_outlined,
+                                    keyboardType: TextInputType.number,
+                                  ),
+                                ),
                               ),
 
                               SizedBox(height: screenHeight * 0.016),
@@ -603,48 +717,60 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                                     ),
                                     const SizedBox(width: 10),
                                     Expanded(
+                                      // ── NOTE: ab RichText direct GestureDetector ke andar nahi hai,
+                                      // isliye checkbox toggle aur link tap dono independently kaam karenge.
+                                      // Checkbox ke text area ko tap karne se bhi checkbox toggle hoga
+                                      // (jaisa pehle tha), sirf underlined links pe tap karne se link khulega.
                                       child: RichText(
                                         text: TextSpan(
                                           style: TextStyle(
                                             color: Colors.white.withOpacity(0.7),
                                             fontSize: 13,
                                           ),
-                                          children: const [
-                                            TextSpan(text: 'I agree to '),
+                                          children: [
+                                            const TextSpan(text: 'I agree to '),
                                             TextSpan(
                                               text: 'Privacy & Terms',
-                                              style: TextStyle(
+                                              style: const TextStyle(
                                                 color: Color(0xFFD4AF37),
                                                 decoration: TextDecoration.underline,
                                                 fontWeight: FontWeight.w500,
                                               ),
+                                              recognizer: TapGestureRecognizer()
+                                                ..onTap = () => _openPolicyLink(_privacyTermsUrl),
                                             ),
-                                            TextSpan(text: ', '),
+                                            const TextSpan(text: ', '),
                                             TextSpan(
                                               text: 'Analysis Disclaimer',
-                                              style: TextStyle(
+                                              style: const TextStyle(
                                                 color: Color(0xFFD4AF37),
                                                 decoration: TextDecoration.underline,
                                                 fontWeight: FontWeight.w500,
                                               ),
+                                              recognizer: TapGestureRecognizer()
+                                                ..onTap = () => _openPolicyLink(_analysisDisclaimerUrl),
                                             ),
-                                            TextSpan(text: ', '),
+                                            const TextSpan(text: ', '),
                                             TextSpan(
                                               text: 'Comprehensive Disclaimer',
-                                              style: TextStyle(
+                                              style: const TextStyle(
                                                 color: Color(0xFFD4AF37),
                                                 decoration: TextDecoration.underline,
                                                 fontWeight: FontWeight.w500,
                                               ),
+                                              recognizer: TapGestureRecognizer()
+                                                ..onTap = () => _openPolicyLink(_comprehensiveDisclaimerUrl),
                                             ),
-                                            TextSpan(text: ' & '),
+                                            const TextSpan(text: ' & '),
                                             TextSpan(
                                               text: 'Legal Disclaimer',
-                                              style: TextStyle(
+                                              style: const TextStyle(
                                                 color: Color(0xFFD4AF37),
                                                 decoration: TextDecoration.underline,
                                                 fontWeight: FontWeight.w500,
                                               ),
+                                              recognizer: TapGestureRecognizer()
+                                                ..onTap = () => _openPolicyLink(_legalDisclaimerUrl),
                                             ),
                                           ],
                                         ),
@@ -653,6 +779,90 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                                   ],
                                 ),
                               ),
+
+
+
+
+                              // GestureDetector(
+                              //   onTap: () =>
+                              //       setState(() => _agreeToTerms = !_agreeToTerms),
+                              //   child: Row(
+                              //     crossAxisAlignment: CrossAxisAlignment.start,
+                              //     children: [
+                              //       AnimatedContainer(
+                              //         duration: const Duration(milliseconds: 200),
+                              //         width: 20,
+                              //         height: 20,
+                              //         margin: const EdgeInsets.only(top: 2),
+                              //         decoration: BoxDecoration(
+                              //           borderRadius: BorderRadius.circular(5),
+                              //           color: _agreeToTerms
+                              //               ? const Color(0xFF7C3AED)
+                              //               : Colors.transparent,
+                              //           border: Border.all(
+                              //             color: _agreeToTerms
+                              //                 ? const Color(0xFF7C3AED)
+                              //                 : Colors.white.withOpacity(0.4),
+                              //             width: 1.5,
+                              //           ),
+                              //         ),
+                              //         child: _agreeToTerms
+                              //             ? const Icon(Icons.check,
+                              //             size: 13, color: Colors.white)
+                              //             : null,
+                              //       ),
+                              //       const SizedBox(width: 10),
+                              //       Expanded(
+                              //         child: RichText(
+                              //           text: TextSpan(
+                              //             style: TextStyle(
+                              //               color: Colors.white.withOpacity(0.7),
+                              //               fontSize: 13,
+                              //             ),
+                              //             children: const [
+                              //               TextSpan(text: 'I agree to '),
+                              //               TextSpan(
+                              //                 text: 'Privacy & Terms',
+                              //                 style: TextStyle(
+                              //                   color: Color(0xFFD4AF37),
+                              //                   decoration: TextDecoration.underline,
+                              //                   fontWeight: FontWeight.w500,
+                              //                 ),
+                              //               ),
+                              //               TextSpan(text: ', '),
+                              //               TextSpan(
+                              //                 text: 'Analysis Disclaimer',
+                              //                 style: TextStyle(
+                              //                   color: Color(0xFFD4AF37),
+                              //                   decoration: TextDecoration.underline,
+                              //                   fontWeight: FontWeight.w500,
+                              //                 ),
+                              //               ),
+                              //               TextSpan(text: ', '),
+                              //               TextSpan(
+                              //                 text: 'Comprehensive Disclaimer',
+                              //                 style: TextStyle(
+                              //                   color: Color(0xFFD4AF37),
+                              //                   decoration: TextDecoration.underline,
+                              //                   fontWeight: FontWeight.w500,
+                              //                 ),
+                              //               ),
+                              //               TextSpan(text: ' & '),
+                              //               TextSpan(
+                              //                 text: 'Legal Disclaimer',
+                              //                 style: TextStyle(
+                              //                   color: Color(0xFFD4AF37),
+                              //                   decoration: TextDecoration.underline,
+                              //                   fontWeight: FontWeight.w500,
+                              //                 ),
+                              //               ),
+                              //             ],
+                              //           ),
+                              //         ),
+                              //       ),
+                              //     ],
+                              //   ),
+                              // ),
 
                               SizedBox(height: screenHeight * 0.022),
 
@@ -732,7 +942,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                               ),
 
                               // Bottom padding — wave ke niche nahi jayega
-                              SizedBox(height: bottomBarHeight + 8),
+                              SizedBox(height: bottomBarHeight + 24),
                               // SizedBox(height: bottomBarHeight + 60),
                             ],
                           ),
@@ -741,27 +951,160 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                     ),
                   ),
                 ),
-                SizedBox(height: screenHeight * 0.12),  // ← sirf yeh ek line
+                //SizedBox(height: screenHeight * 0.12),  // ← sirf yeh ek line
+                //SizedBox(height: 60),  // ← sirf yeh ek line
               ],
             ),
           ),
+
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: bottomBarHeight,
+            child: IgnorePointer(  // taps neeche content tak pahunch jayenge
+              child: AnimatedBuilder(
+                animation: _waveCtrl,
+                builder: (_, __) => CustomPaint(painter: WavePainter(_waveCtrl.value)),
+              ),
+            ),
+          ),
+
         ],
       ),
     );
   }
 
+  // ── Country code picker — search built-in hai, bas theme dark lagayi
+  void _pickPhoneCountryCode() {
+    showCountryPicker(
+      context: context,
+      showPhoneCode: true,   // list mein dial code bhi dikhega
+      countryListTheme: CountryListThemeData(
+        backgroundColor: const Color(0xFF1E0245),
+        textStyle: const TextStyle(color: Colors.white, fontSize: 15),
+        searchTextStyle: const TextStyle(color: Colors.white),
+        bottomSheetHeight: MediaQuery.of(context).size.height * 0.75,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        inputDecoration: InputDecoration(
+          hintText: 'Search country or code',
+          hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
+          prefixIcon: const Icon(Icons.search, color: Color(0xFFD4AF37)),
+          filled: true,
+          fillColor: Colors.white.withOpacity(0.08),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+        ),
+      ),
+      onSelect: (country) {
+        setState(() => _phoneCountry = country);
+      },
+    );
+  }
+
+  Future<void> _pickDateOfBirth() async {
+    final now = DateTime.now();
+    final initial = _selectedDob ?? DateTime(now.year - 18, now.month, now.day);
+
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(now.year - 100),
+      lastDate: now,
+      initialEntryMode: DatePickerEntryMode.calendar, // ← calendar mode se start (recommended)
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.dark(
+              primary: Color(0xFF9333EA),
+              onPrimary: Colors.white,
+              surface: Color(0xFF1E0245),
+              onSurface: Colors.white,
+            ),
+            dialogBackgroundColor: const Color(0xFF1E0245),
+
+            // ✅ YEH NAYA ADD KARO — manual date entry text field ka color fix karega
+            inputDecorationTheme: InputDecorationTheme(
+              labelStyle: const TextStyle(color: Color(0xFFD4AF37)),
+              floatingLabelStyle: const TextStyle(color: Color(0xFFD4AF37)),
+              enabledBorder: const OutlineInputBorder(
+                borderSide: BorderSide(color: Color(0xFF9333EA), width: 1.5),
+              ),
+              focusedBorder: const OutlineInputBorder(
+                borderSide: BorderSide(color: Color(0xFF9333EA), width: 2),
+              ),
+            ),
+
+            // ✅ Typed text ka color white karega
+            textTheme: Theme.of(context).textTheme.apply(
+              bodyColor: Colors.white,
+              displayColor: Colors.white,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() {
+        _selectedDob = picked;
+        _ageCtrl.text = _calculateAge(picked).toString();
+      });
+    }
+  }
+
+  int _calculateAge(DateTime dob) {
+    final today = DateTime.now();
+    int age = today.year - dob.year;
+    if (today.month < dob.month ||
+        (today.month == dob.month && today.day < dob.day)) {
+      age--;
+    }
+    return age;
+  }
+
   // ── Field label helper
-  Widget _fieldLabel(String label) {
-    return Text(
-      label,
-      style: TextStyle(
-        color: Colors.white.withOpacity(0.8),
-        fontSize: 13.5,
-        fontWeight: FontWeight.w500,
-        letterSpacing: 0.2,
+  // Widget _fieldLabel(String label) {
+  //   return Text(
+  //     label,
+  //     style: TextStyle(
+  //       color: Colors.white.withOpacity(0.8),
+  //       fontSize: 13.5,
+  //       fontWeight: FontWeight.w500,
+  //       letterSpacing: 0.2,
+  //     ),
+  //   );
+  // }
+  // ── Field label helper
+  // isRequired: true → label ke baad ek RED "*" add hota hai
+  Widget _fieldLabel(String label, {bool isRequired = false}) {
+    return RichText(
+      text: TextSpan(
+        text: label,
+        style: TextStyle(
+          color: Colors.white.withOpacity(0.8),
+          fontSize: 13.5,
+          fontWeight: FontWeight.w500,
+          letterSpacing: 0.2,
+        ),
+        children: isRequired
+            ? const [
+          TextSpan(
+            text: ' *',
+            style: TextStyle(
+              color: Colors.redAccent,   // ← sirf star red
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ]
+            : null,
       ),
     );
   }
+
 }
 
 

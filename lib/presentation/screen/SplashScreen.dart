@@ -522,15 +522,69 @@ class _SplashScreenState extends State<SplashScreen>
                         opacity: _taglineOpacity,
                         child: SlideTransition(
                           position: _taglineSlide,
-                          child: Text(
-                            'Master the Markets. Build Your Future.',
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.5),
-                              fontSize: size.height * 0.016,
-                              fontWeight: FontWeight.w300,
-                              letterSpacing: 0.8,
-                            ),
+
+
+                          // child: Text(
+                          //   'Master the Markets. Build Your Future.',
+                          //   style: TextStyle(
+                          //     color: Colors.white.withOpacity(0.5),
+                          //     fontSize: size.height * 0.016,
+                          //     fontWeight: FontWeight.w300,
+                          //     letterSpacing: 0.8,
+                          //   ),
+                          // ),
+
+                          child: Column(
+                            children: [
+                              Text(
+                                'SKILL · HUSTLE · PROSPER',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: const Color(0xFFD4AF37).withOpacity(0.8),
+                                  fontSize: size.height * 0.014,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 1.2,
+                                ),
+                              ),
+
+                              SizedBox(height: size.height * 0.008),
+                              SizedBox(height: size.height * 0.008),
+                              SizedBox(height: size.height * 0.008),
+                              Text(
+                                'The Social-First Financial Learning Ecosystem',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.75),
+                                  fontSize: size.height * 0.0165,
+                                  fontWeight: FontWeight.w500,
+                                  letterSpacing: 0.6,
+                                ),
+                              ),
+                              SizedBox(height: size.height * 0.008),
+                              Text(
+                                'Powered by F.I.R.S.T.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: const Color(0xFFD4AF37).withOpacity(0.8),
+                                  fontSize: size.height * 0.014,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 1.2,
+                                ),
+                              ),
+                              SizedBox(height: size.height * 0.006),
+                              Text(
+                                'Financial Intelligence through Real-world Social Teaching',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.4),
+                                  fontSize: size.height * 0.013,
+                                  fontWeight: FontWeight.w300,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
                           ),
+
                         ),
                       ),
                     ),
