@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$UserRegistrationRequest {
 
-@JsonKey(name: "name") String get name;@JsonKey(name: "email") String get email;@JsonKey(name: "password") String get password;@JsonKey(name: "confirmPassword") String get confirmPassword;@JsonKey(name: "age") String get age;@JsonKey(name: "country") String get country;@JsonKey(name: "gender") String? get gender;@JsonKey(name: "phoneNo") String get phoneNo;@JsonKey(name: "terms") bool get terms;
+@JsonKey(name: "name") String get name;@JsonKey(name: "email") String get email;@JsonKey(name: "password") String get password;@JsonKey(name: "confirmPassword") String get confirmPassword;@JsonKey(name: "age") String get age;@JsonKey(name: "country") String get country;@JsonKey(name: "gender") String? get gender;@JsonKey(name: "phoneNo") String get phoneNo;@JsonKey(name: "terms") bool get terms;@JsonKey(name: "parentEmail") String? get parentEmail;@JsonKey(name: "referralCode") String? get referralCode;@JsonKey(name: "referKey") String? get referKey;
 /// Create a copy of UserRegistrationRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $UserRegistrationRequestCopyWith<UserRegistrationRequest> get copyWith => _$User
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is UserRegistrationRequest&&(identical(other.name, name) || other.name == name)&&(identical(other.email, email) || other.email == email)&&(identical(other.password, password) || other.password == password)&&(identical(other.confirmPassword, confirmPassword) || other.confirmPassword == confirmPassword)&&(identical(other.age, age) || other.age == age)&&(identical(other.country, country) || other.country == country)&&(identical(other.gender, gender) || other.gender == gender)&&(identical(other.phoneNo, phoneNo) || other.phoneNo == phoneNo)&&(identical(other.terms, terms) || other.terms == terms));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is UserRegistrationRequest&&(identical(other.name, name) || other.name == name)&&(identical(other.email, email) || other.email == email)&&(identical(other.password, password) || other.password == password)&&(identical(other.confirmPassword, confirmPassword) || other.confirmPassword == confirmPassword)&&(identical(other.age, age) || other.age == age)&&(identical(other.country, country) || other.country == country)&&(identical(other.gender, gender) || other.gender == gender)&&(identical(other.phoneNo, phoneNo) || other.phoneNo == phoneNo)&&(identical(other.terms, terms) || other.terms == terms)&&(identical(other.parentEmail, parentEmail) || other.parentEmail == parentEmail)&&(identical(other.referralCode, referralCode) || other.referralCode == referralCode)&&(identical(other.referKey, referKey) || other.referKey == referKey));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,email,password,confirmPassword,age,country,gender,phoneNo,terms);
+int get hashCode => Object.hash(runtimeType,name,email,password,confirmPassword,age,country,gender,phoneNo,terms,parentEmail,referralCode,referKey);
 
 @override
 String toString() {
-  return 'UserRegistrationRequest(name: $name, email: $email, password: $password, confirmPassword: $confirmPassword, age: $age, country: $country, gender: $gender, phoneNo: $phoneNo, terms: $terms)';
+  return 'UserRegistrationRequest(name: $name, email: $email, password: $password, confirmPassword: $confirmPassword, age: $age, country: $country, gender: $gender, phoneNo: $phoneNo, terms: $terms, parentEmail: $parentEmail, referralCode: $referralCode, referKey: $referKey)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $UserRegistrationRequestCopyWith<$Res>  {
   factory $UserRegistrationRequestCopyWith(UserRegistrationRequest value, $Res Function(UserRegistrationRequest) _then) = _$UserRegistrationRequestCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: "name") String name,@JsonKey(name: "email") String email,@JsonKey(name: "password") String password,@JsonKey(name: "confirmPassword") String confirmPassword,@JsonKey(name: "age") String age,@JsonKey(name: "country") String country,@JsonKey(name: "gender") String? gender,@JsonKey(name: "phoneNo") String phoneNo,@JsonKey(name: "terms") bool terms
+@JsonKey(name: "name") String name,@JsonKey(name: "email") String email,@JsonKey(name: "password") String password,@JsonKey(name: "confirmPassword") String confirmPassword,@JsonKey(name: "age") String age,@JsonKey(name: "country") String country,@JsonKey(name: "gender") String? gender,@JsonKey(name: "phoneNo") String phoneNo,@JsonKey(name: "terms") bool terms,@JsonKey(name: "parentEmail") String? parentEmail,@JsonKey(name: "referralCode") String? referralCode,@JsonKey(name: "referKey") String? referKey
 });
 
 
@@ -65,7 +65,7 @@ class _$UserRegistrationRequestCopyWithImpl<$Res>
 
 /// Create a copy of UserRegistrationRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? email = null,Object? password = null,Object? confirmPassword = null,Object? age = null,Object? country = null,Object? gender = freezed,Object? phoneNo = null,Object? terms = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? email = null,Object? password = null,Object? confirmPassword = null,Object? age = null,Object? country = null,Object? gender = freezed,Object? phoneNo = null,Object? terms = null,Object? parentEmail = freezed,Object? referralCode = freezed,Object? referKey = freezed,}) {
   return _then(_self.copyWith(
 name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,email: null == email ? _self.email : email // ignore: cast_nullable_to_non_nullable
@@ -76,7 +76,10 @@ as String,country: null == country ? _self.country : country // ignore: cast_nul
 as String,gender: freezed == gender ? _self.gender : gender // ignore: cast_nullable_to_non_nullable
 as String?,phoneNo: null == phoneNo ? _self.phoneNo : phoneNo // ignore: cast_nullable_to_non_nullable
 as String,terms: null == terms ? _self.terms : terms // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,parentEmail: freezed == parentEmail ? _self.parentEmail : parentEmail // ignore: cast_nullable_to_non_nullable
+as String?,referralCode: freezed == referralCode ? _self.referralCode : referralCode // ignore: cast_nullable_to_non_nullable
+as String?,referKey: freezed == referKey ? _self.referKey : referKey // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -161,10 +164,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: "name")  String name, @JsonKey(name: "email")  String email, @JsonKey(name: "password")  String password, @JsonKey(name: "confirmPassword")  String confirmPassword, @JsonKey(name: "age")  String age, @JsonKey(name: "country")  String country, @JsonKey(name: "gender")  String? gender, @JsonKey(name: "phoneNo")  String phoneNo, @JsonKey(name: "terms")  bool terms)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: "name")  String name, @JsonKey(name: "email")  String email, @JsonKey(name: "password")  String password, @JsonKey(name: "confirmPassword")  String confirmPassword, @JsonKey(name: "age")  String age, @JsonKey(name: "country")  String country, @JsonKey(name: "gender")  String? gender, @JsonKey(name: "phoneNo")  String phoneNo, @JsonKey(name: "terms")  bool terms, @JsonKey(name: "parentEmail")  String? parentEmail, @JsonKey(name: "referralCode")  String? referralCode, @JsonKey(name: "referKey")  String? referKey)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _UserRegistrationRequest() when $default != null:
-return $default(_that.name,_that.email,_that.password,_that.confirmPassword,_that.age,_that.country,_that.gender,_that.phoneNo,_that.terms);case _:
+return $default(_that.name,_that.email,_that.password,_that.confirmPassword,_that.age,_that.country,_that.gender,_that.phoneNo,_that.terms,_that.parentEmail,_that.referralCode,_that.referKey);case _:
   return orElse();
 
 }
@@ -182,10 +185,10 @@ return $default(_that.name,_that.email,_that.password,_that.confirmPassword,_tha
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: "name")  String name, @JsonKey(name: "email")  String email, @JsonKey(name: "password")  String password, @JsonKey(name: "confirmPassword")  String confirmPassword, @JsonKey(name: "age")  String age, @JsonKey(name: "country")  String country, @JsonKey(name: "gender")  String? gender, @JsonKey(name: "phoneNo")  String phoneNo, @JsonKey(name: "terms")  bool terms)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: "name")  String name, @JsonKey(name: "email")  String email, @JsonKey(name: "password")  String password, @JsonKey(name: "confirmPassword")  String confirmPassword, @JsonKey(name: "age")  String age, @JsonKey(name: "country")  String country, @JsonKey(name: "gender")  String? gender, @JsonKey(name: "phoneNo")  String phoneNo, @JsonKey(name: "terms")  bool terms, @JsonKey(name: "parentEmail")  String? parentEmail, @JsonKey(name: "referralCode")  String? referralCode, @JsonKey(name: "referKey")  String? referKey)  $default,) {final _that = this;
 switch (_that) {
 case _UserRegistrationRequest():
-return $default(_that.name,_that.email,_that.password,_that.confirmPassword,_that.age,_that.country,_that.gender,_that.phoneNo,_that.terms);case _:
+return $default(_that.name,_that.email,_that.password,_that.confirmPassword,_that.age,_that.country,_that.gender,_that.phoneNo,_that.terms,_that.parentEmail,_that.referralCode,_that.referKey);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -202,10 +205,10 @@ return $default(_that.name,_that.email,_that.password,_that.confirmPassword,_tha
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: "name")  String name, @JsonKey(name: "email")  String email, @JsonKey(name: "password")  String password, @JsonKey(name: "confirmPassword")  String confirmPassword, @JsonKey(name: "age")  String age, @JsonKey(name: "country")  String country, @JsonKey(name: "gender")  String? gender, @JsonKey(name: "phoneNo")  String phoneNo, @JsonKey(name: "terms")  bool terms)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: "name")  String name, @JsonKey(name: "email")  String email, @JsonKey(name: "password")  String password, @JsonKey(name: "confirmPassword")  String confirmPassword, @JsonKey(name: "age")  String age, @JsonKey(name: "country")  String country, @JsonKey(name: "gender")  String? gender, @JsonKey(name: "phoneNo")  String phoneNo, @JsonKey(name: "terms")  bool terms, @JsonKey(name: "parentEmail")  String? parentEmail, @JsonKey(name: "referralCode")  String? referralCode, @JsonKey(name: "referKey")  String? referKey)?  $default,) {final _that = this;
 switch (_that) {
 case _UserRegistrationRequest() when $default != null:
-return $default(_that.name,_that.email,_that.password,_that.confirmPassword,_that.age,_that.country,_that.gender,_that.phoneNo,_that.terms);case _:
+return $default(_that.name,_that.email,_that.password,_that.confirmPassword,_that.age,_that.country,_that.gender,_that.phoneNo,_that.terms,_that.parentEmail,_that.referralCode,_that.referKey);case _:
   return null;
 
 }
@@ -217,7 +220,7 @@ return $default(_that.name,_that.email,_that.password,_that.confirmPassword,_tha
 @JsonSerializable()
 
 class _UserRegistrationRequest implements UserRegistrationRequest {
-  const _UserRegistrationRequest({@JsonKey(name: "name") required this.name, @JsonKey(name: "email") required this.email, @JsonKey(name: "password") required this.password, @JsonKey(name: "confirmPassword") required this.confirmPassword, @JsonKey(name: "age") required this.age, @JsonKey(name: "country") required this.country, @JsonKey(name: "gender") this.gender, @JsonKey(name: "phoneNo") required this.phoneNo, @JsonKey(name: "terms") required this.terms});
+  const _UserRegistrationRequest({@JsonKey(name: "name") required this.name, @JsonKey(name: "email") required this.email, @JsonKey(name: "password") required this.password, @JsonKey(name: "confirmPassword") required this.confirmPassword, @JsonKey(name: "age") required this.age, @JsonKey(name: "country") required this.country, @JsonKey(name: "gender") this.gender, @JsonKey(name: "phoneNo") required this.phoneNo, @JsonKey(name: "terms") required this.terms, @JsonKey(name: "parentEmail") this.parentEmail, @JsonKey(name: "referralCode") this.referralCode, @JsonKey(name: "referKey") this.referKey});
   factory _UserRegistrationRequest.fromJson(Map<String, dynamic> json) => _$UserRegistrationRequestFromJson(json);
 
 @override@JsonKey(name: "name") final  String name;
@@ -229,6 +232,9 @@ class _UserRegistrationRequest implements UserRegistrationRequest {
 @override@JsonKey(name: "gender") final  String? gender;
 @override@JsonKey(name: "phoneNo") final  String phoneNo;
 @override@JsonKey(name: "terms") final  bool terms;
+@override@JsonKey(name: "parentEmail") final  String? parentEmail;
+@override@JsonKey(name: "referralCode") final  String? referralCode;
+@override@JsonKey(name: "referKey") final  String? referKey;
 
 /// Create a copy of UserRegistrationRequest
 /// with the given fields replaced by the non-null parameter values.
@@ -243,16 +249,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _UserRegistrationRequest&&(identical(other.name, name) || other.name == name)&&(identical(other.email, email) || other.email == email)&&(identical(other.password, password) || other.password == password)&&(identical(other.confirmPassword, confirmPassword) || other.confirmPassword == confirmPassword)&&(identical(other.age, age) || other.age == age)&&(identical(other.country, country) || other.country == country)&&(identical(other.gender, gender) || other.gender == gender)&&(identical(other.phoneNo, phoneNo) || other.phoneNo == phoneNo)&&(identical(other.terms, terms) || other.terms == terms));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _UserRegistrationRequest&&(identical(other.name, name) || other.name == name)&&(identical(other.email, email) || other.email == email)&&(identical(other.password, password) || other.password == password)&&(identical(other.confirmPassword, confirmPassword) || other.confirmPassword == confirmPassword)&&(identical(other.age, age) || other.age == age)&&(identical(other.country, country) || other.country == country)&&(identical(other.gender, gender) || other.gender == gender)&&(identical(other.phoneNo, phoneNo) || other.phoneNo == phoneNo)&&(identical(other.terms, terms) || other.terms == terms)&&(identical(other.parentEmail, parentEmail) || other.parentEmail == parentEmail)&&(identical(other.referralCode, referralCode) || other.referralCode == referralCode)&&(identical(other.referKey, referKey) || other.referKey == referKey));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,email,password,confirmPassword,age,country,gender,phoneNo,terms);
+int get hashCode => Object.hash(runtimeType,name,email,password,confirmPassword,age,country,gender,phoneNo,terms,parentEmail,referralCode,referKey);
 
 @override
 String toString() {
-  return 'UserRegistrationRequest(name: $name, email: $email, password: $password, confirmPassword: $confirmPassword, age: $age, country: $country, gender: $gender, phoneNo: $phoneNo, terms: $terms)';
+  return 'UserRegistrationRequest(name: $name, email: $email, password: $password, confirmPassword: $confirmPassword, age: $age, country: $country, gender: $gender, phoneNo: $phoneNo, terms: $terms, parentEmail: $parentEmail, referralCode: $referralCode, referKey: $referKey)';
 }
 
 
@@ -263,7 +269,7 @@ abstract mixin class _$UserRegistrationRequestCopyWith<$Res> implements $UserReg
   factory _$UserRegistrationRequestCopyWith(_UserRegistrationRequest value, $Res Function(_UserRegistrationRequest) _then) = __$UserRegistrationRequestCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: "name") String name,@JsonKey(name: "email") String email,@JsonKey(name: "password") String password,@JsonKey(name: "confirmPassword") String confirmPassword,@JsonKey(name: "age") String age,@JsonKey(name: "country") String country,@JsonKey(name: "gender") String? gender,@JsonKey(name: "phoneNo") String phoneNo,@JsonKey(name: "terms") bool terms
+@JsonKey(name: "name") String name,@JsonKey(name: "email") String email,@JsonKey(name: "password") String password,@JsonKey(name: "confirmPassword") String confirmPassword,@JsonKey(name: "age") String age,@JsonKey(name: "country") String country,@JsonKey(name: "gender") String? gender,@JsonKey(name: "phoneNo") String phoneNo,@JsonKey(name: "terms") bool terms,@JsonKey(name: "parentEmail") String? parentEmail,@JsonKey(name: "referralCode") String? referralCode,@JsonKey(name: "referKey") String? referKey
 });
 
 
@@ -280,7 +286,7 @@ class __$UserRegistrationRequestCopyWithImpl<$Res>
 
 /// Create a copy of UserRegistrationRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? name = null,Object? email = null,Object? password = null,Object? confirmPassword = null,Object? age = null,Object? country = null,Object? gender = freezed,Object? phoneNo = null,Object? terms = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? name = null,Object? email = null,Object? password = null,Object? confirmPassword = null,Object? age = null,Object? country = null,Object? gender = freezed,Object? phoneNo = null,Object? terms = null,Object? parentEmail = freezed,Object? referralCode = freezed,Object? referKey = freezed,}) {
   return _then(_UserRegistrationRequest(
 name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,email: null == email ? _self.email : email // ignore: cast_nullable_to_non_nullable
@@ -291,7 +297,10 @@ as String,country: null == country ? _self.country : country // ignore: cast_nul
 as String,gender: freezed == gender ? _self.gender : gender // ignore: cast_nullable_to_non_nullable
 as String?,phoneNo: null == phoneNo ? _self.phoneNo : phoneNo // ignore: cast_nullable_to_non_nullable
 as String,terms: null == terms ? _self.terms : terms // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,parentEmail: freezed == parentEmail ? _self.parentEmail : parentEmail // ignore: cast_nullable_to_non_nullable
+as String?,referralCode: freezed == referralCode ? _self.referralCode : referralCode // ignore: cast_nullable_to_non_nullable
+as String?,referKey: freezed == referKey ? _self.referKey : referKey // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

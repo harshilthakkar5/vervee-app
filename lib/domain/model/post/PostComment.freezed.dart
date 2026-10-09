@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$PostComment {
 
- int get id; String get content; DateTime get createdAt; String get userName;
+ int get id; String get content; DateTime get createdAt; String get userName; String? get userAvatarUrl;
 /// Create a copy of PostComment
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +25,16 @@ $PostCommentCopyWith<PostComment> get copyWith => _$PostCommentCopyWithImpl<Post
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PostComment&&(identical(other.id, id) || other.id == id)&&(identical(other.content, content) || other.content == content)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.userName, userName) || other.userName == userName));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PostComment&&(identical(other.id, id) || other.id == id)&&(identical(other.content, content) || other.content == content)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.userName, userName) || other.userName == userName)&&(identical(other.userAvatarUrl, userAvatarUrl) || other.userAvatarUrl == userAvatarUrl));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,content,createdAt,userName);
+int get hashCode => Object.hash(runtimeType,id,content,createdAt,userName,userAvatarUrl);
 
 @override
 String toString() {
-  return 'PostComment(id: $id, content: $content, createdAt: $createdAt, userName: $userName)';
+  return 'PostComment(id: $id, content: $content, createdAt: $createdAt, userName: $userName, userAvatarUrl: $userAvatarUrl)';
 }
 
 
@@ -45,7 +45,7 @@ abstract mixin class $PostCommentCopyWith<$Res>  {
   factory $PostCommentCopyWith(PostComment value, $Res Function(PostComment) _then) = _$PostCommentCopyWithImpl;
 @useResult
 $Res call({
- int id, String content, DateTime createdAt, String userName
+ int id, String content, DateTime createdAt, String userName, String? userAvatarUrl
 });
 
 
@@ -62,13 +62,14 @@ class _$PostCommentCopyWithImpl<$Res>
 
 /// Create a copy of PostComment
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? content = null,Object? createdAt = null,Object? userName = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? content = null,Object? createdAt = null,Object? userName = null,Object? userAvatarUrl = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as int,content: null == content ? _self.content : content // ignore: cast_nullable_to_non_nullable
 as String,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime,userName: null == userName ? _self.userName : userName // ignore: cast_nullable_to_non_nullable
-as String,
+as String,userAvatarUrl: freezed == userAvatarUrl ? _self.userAvatarUrl : userAvatarUrl // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -153,10 +154,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int id,  String content,  DateTime createdAt,  String userName)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int id,  String content,  DateTime createdAt,  String userName,  String? userAvatarUrl)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _PostComment() when $default != null:
-return $default(_that.id,_that.content,_that.createdAt,_that.userName);case _:
+return $default(_that.id,_that.content,_that.createdAt,_that.userName,_that.userAvatarUrl);case _:
   return orElse();
 
 }
@@ -174,10 +175,10 @@ return $default(_that.id,_that.content,_that.createdAt,_that.userName);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int id,  String content,  DateTime createdAt,  String userName)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int id,  String content,  DateTime createdAt,  String userName,  String? userAvatarUrl)  $default,) {final _that = this;
 switch (_that) {
 case _PostComment():
-return $default(_that.id,_that.content,_that.createdAt,_that.userName);case _:
+return $default(_that.id,_that.content,_that.createdAt,_that.userName,_that.userAvatarUrl);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -194,10 +195,10 @@ return $default(_that.id,_that.content,_that.createdAt,_that.userName);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int id,  String content,  DateTime createdAt,  String userName)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int id,  String content,  DateTime createdAt,  String userName,  String? userAvatarUrl)?  $default,) {final _that = this;
 switch (_that) {
 case _PostComment() when $default != null:
-return $default(_that.id,_that.content,_that.createdAt,_that.userName);case _:
+return $default(_that.id,_that.content,_that.createdAt,_that.userName,_that.userAvatarUrl);case _:
   return null;
 
 }
@@ -209,13 +210,14 @@ return $default(_that.id,_that.content,_that.createdAt,_that.userName);case _:
 
 
 class _PostComment implements PostComment {
-  const _PostComment({required this.id, required this.content, required this.createdAt, required this.userName});
+  const _PostComment({required this.id, required this.content, required this.createdAt, required this.userName, this.userAvatarUrl});
   
 
 @override final  int id;
 @override final  String content;
 @override final  DateTime createdAt;
 @override final  String userName;
+@override final  String? userAvatarUrl;
 
 /// Create a copy of PostComment
 /// with the given fields replaced by the non-null parameter values.
@@ -227,16 +229,16 @@ _$PostCommentCopyWith<_PostComment> get copyWith => __$PostCommentCopyWithImpl<_
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PostComment&&(identical(other.id, id) || other.id == id)&&(identical(other.content, content) || other.content == content)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.userName, userName) || other.userName == userName));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PostComment&&(identical(other.id, id) || other.id == id)&&(identical(other.content, content) || other.content == content)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.userName, userName) || other.userName == userName)&&(identical(other.userAvatarUrl, userAvatarUrl) || other.userAvatarUrl == userAvatarUrl));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,content,createdAt,userName);
+int get hashCode => Object.hash(runtimeType,id,content,createdAt,userName,userAvatarUrl);
 
 @override
 String toString() {
-  return 'PostComment(id: $id, content: $content, createdAt: $createdAt, userName: $userName)';
+  return 'PostComment(id: $id, content: $content, createdAt: $createdAt, userName: $userName, userAvatarUrl: $userAvatarUrl)';
 }
 
 
@@ -247,7 +249,7 @@ abstract mixin class _$PostCommentCopyWith<$Res> implements $PostCommentCopyWith
   factory _$PostCommentCopyWith(_PostComment value, $Res Function(_PostComment) _then) = __$PostCommentCopyWithImpl;
 @override @useResult
 $Res call({
- int id, String content, DateTime createdAt, String userName
+ int id, String content, DateTime createdAt, String userName, String? userAvatarUrl
 });
 
 
@@ -264,13 +266,14 @@ class __$PostCommentCopyWithImpl<$Res>
 
 /// Create a copy of PostComment
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? content = null,Object? createdAt = null,Object? userName = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? content = null,Object? createdAt = null,Object? userName = null,Object? userAvatarUrl = freezed,}) {
   return _then(_PostComment(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as int,content: null == content ? _self.content : content // ignore: cast_nullable_to_non_nullable
 as String,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime,userName: null == userName ? _self.userName : userName // ignore: cast_nullable_to_non_nullable
-as String,
+as String,userAvatarUrl: freezed == userAvatarUrl ? _self.userAvatarUrl : userAvatarUrl // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

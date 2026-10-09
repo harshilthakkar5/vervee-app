@@ -13,5 +13,6 @@ abstract class PostComment with _$PostComment {
     required String   content,
     required DateTime createdAt,
     required String   userName,
+    String? userAvatarUrl,
   }) = _PostComment;
 }

@@ -22,10 +22,14 @@ abstract class _GC {
   static const textTer   = Color(0xFF555555);
 }
 
-// ─── Aspect Ratio Model ───────────────────────────────────────────────────────
+// ─── Aspect Ratio Model ─────────────────────────────────────────────────────
+// ✅ CHANGED — Instagram jaisa hi ratio picker wapas laaya he. "Original"
+// default he — jo image jaisi shoot hui he (portrait/landscape/square)
+// waisi hi rahegi, aur feed (PostCard) me bhi wahi asli ratio dikhega
+// (dynamic — koi ek fixed size force nahi hoti ab).
 class _AR {
   final String label;
-  final double? ratio; // null = original
+  final double? ratio; // null = original (image ki apni natural ratio)
   const _AR(this.label, this.ratio);
 }
 
@@ -60,6 +64,12 @@ bool _isVideoPath(String path) {
 //  Ab ye khud gallery browse nahi karta — seedha system Photo Picker launch
 //  karta hai (image_picker.pickMultipleMedia), jisme koi runtime permission
 //  nahi lagta (Google Play Photo & Video Permissions policy compliant).
+//
+//  ✅ CHANGED — Ratio picker wapas he (Original/1:1/4:5/16:9), default
+//  "Original". Feed (PostCard) ab is crop ke actual pixel-ratio ko dynamically
+//  detect karke exactly wahi dikhata he (portrait lamba, landscape chauda) —
+//  isliye kisi bhi ratio ko force karne ki zarurat nahi, jo bhi crop karoge
+//  feed me bina kisi black space ke wahi dikhega.
 // ═════════════════════════════════════════════════════════════════════════════
 class GalleryPickerScreen extends StatefulWidget {
   const GalleryPickerScreen({super.key});
@@ -77,9 +87,12 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
   bool _processingNext = false;
   bool _pickFailed     = false;
 
-  int _ratioIndex = 1; // default 1:1
+  // ✅ CHANGED — default "Original" (index 0), taaki portrait/landscape jaisi
+  // shoot hui he waisi hi rahe. User chahe to 1:1/4:5/16:9 bhi choose kar
+  // sakta he — feed dynamically jo bhi final ratio ho, wahi dikhayega.
+  int _ratioIndex = 0;
   CropTransform _cropTransform = const CropTransform(
-    offset: Offset.zero, scale: 1.0, aspectRatio: 1.0,
+    offset: Offset.zero, scale: 1.0, aspectRatio: null,
   );
 
   static const int _maxSelection = 10;
@@ -149,7 +162,13 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
       final naturalH = srcH / srcW * screenW;
       cropBoxH = naturalH.clamp(screenW * 0.56, screenW * 1.25);
     } else {
-      cropBoxH = (screenW / arRatio).clamp(0.0, 380.0);
+      // ✅ FIX — pehle yahan height ko hamesha 380px tak clamp kar diya
+      // jaata tha, chahe selected ratio (jaise 4:5) ke liye zyada height
+      // chahiye ho. Isse actual cropped image us ratio se match hi nahi
+      // karta tha — yahi feed me black bars ka asli root-cause tha. Ab
+      // exact ratio use hota he, bas bohot extreme case ke liye ek
+      // generous safety-cap (screenW * 1.6) rakha he.
+      cropBoxH = (screenW / arRatio).clamp(0.0, screenW * 1.6);
     }
 
     final fitScaleX = cropBoxW / srcW;
@@ -502,7 +521,6 @@ class _CropPreviewState extends State<_CropPreview> {
   Offset _startFocal = Offset.zero;
   bool   _loaded     = false;
 
-  static const double _previewH = 380.0;
   static const double _maxScale = 5.0;
 
   @override
@@ -539,7 +557,13 @@ class _CropPreviewState extends State<_CropPreview> {
       final naturalH = screenW * _imageSize.height / _imageSize.width;
       return Size(screenW, naturalH.clamp(screenW * 0.56, screenW * 1.25));
     }
-    final h = (screenW / widget.aspectRatio!).clamp(0.0, _previewH);
+    // ✅ FIX — pehle yahan height ko fixed 380px tak clamp kiya jaata tha,
+    // jo selected ratio (jaise 4:5) se match nahi karta tha — isliye
+    // preview me jo dikhta tha wo actual export se bhi thoda different
+    // "effective ratio" ka hota tha. Ab _cropToFile() jaisa hi exact
+    // formula use ho raha he (WYSIWYG — jo preview me dikhega wahi
+    // export bhi hoga), bas ek generous safety-cap ke saath.
+    final h = (screenW / widget.aspectRatio!).clamp(0.0, screenW * 1.6);
     return Size(screenW, h);
   }
 
@@ -658,9 +682,9 @@ class _GridPainter extends CustomPainter {
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  _VideoPreviewBox — top preview jab selected primary video ho
-//  Ab thumbnailDataWithSize (photo_manager) ki jagah seedha VideoPlayerController
-//  se pehla frame paused dikhate hain — koi extra package (video_thumbnail
-//  waghera) ki zaroorat nahi.
+//  ✅ Video ki apni NATIVE aspect ratio (portrait/landscape jo bhi ho) me
+//  dikhta he — koi crop nahi hoti (video re-encode karna is scope me nahi),
+//  aur feed (PostCard) me bhi yahi asli ratio dynamically use hoti he.
 // ═════════════════════════════════════════════════════════════════════════════
 class _VideoPreviewBox extends StatefulWidget {
   final File file;
@@ -766,6 +790,789 @@ class _VideoPreviewBoxState extends State<_VideoPreviewBox> {
     );
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// import 'dart:async';
+// import 'dart:io';
+// import 'dart:typed_data';
+// import 'dart:ui' as ui;
+// import 'package:flutter/material.dart';
+// import 'package:flutter/services.dart';
+// import 'package:image_picker/image_picker.dart';
+// import 'package:path_provider/path_provider.dart';
+// import 'package:video_player/video_player.dart';
+//
+// import 'CreatePostScreen.dart';
+//
+// // ─── Colors ───────────────────────────────────────────────────────────────────
+// abstract class _GC {
+//   static const bg        = Color(0xFF000000);
+//   static const surfaceEl = Color(0xFF1C1C1C);
+//   static const divider   = Color(0xFF262626);
+//   static const accent    = Color(0xFF0095F6);
+//   static const textPri   = Color(0xFFFFFFFF);
+//   static const textSec   = Color(0xFFA8A8A8);
+//   static const textTer   = Color(0xFF555555);
+// }
+//
+// // ─── Aspect Ratio Model ───────────────────────────────────────────────────────
+// class _AR {
+//   final String label;
+//   final double? ratio; // null = original
+//   const _AR(this.label, this.ratio);
+// }
+//
+// const List<_AR> _kRatios = [
+//   _AR('Original', null),
+//   _AR('1:1',  1.0),
+//   _AR('4:5',  4 / 5),
+//   _AR('16:9', 16 / 9),
+// ];
+//
+// // ─── CropTransform — gallery → CreatePost tak bhejne ke liye ─────────────────
+// class CropTransform {
+//   final Offset offset;
+//   final double scale;
+//   final double? aspectRatio;
+//   const CropTransform({
+//     required this.offset,
+//     required this.scale,
+//     required this.aspectRatio,
+//   });
+// }
+//
+// // Simple helper to detect video vs image from extension
+// bool _isVideoPath(String path) {
+//   final p = path.toLowerCase();
+//   return p.endsWith('.mp4') || p.endsWith('.mov') || p.endsWith('.3gp') ||
+//       p.endsWith('.mkv') || p.endsWith('.webm') || p.endsWith('.avi');
+// }
+//
+// // ═════════════════════════════════════════════════════════════════════════════
+// //  GALLERY PICKER SCREEN
+// //  Ab ye khud gallery browse nahi karta — seedha system Photo Picker launch
+// //  karta hai (image_picker.pickMultipleMedia), jisme koi runtime permission
+// //  nahi lagta (Google Play Photo & Video Permissions policy compliant).
+// // ═════════════════════════════════════════════════════════════════════════════
+// class GalleryPickerScreen extends StatefulWidget {
+//   const GalleryPickerScreen({super.key});
+//   @override
+//   State<GalleryPickerScreen> createState() => _GalleryPickerScreenState();
+// }
+//
+// class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
+//   final ImagePicker _picker = ImagePicker();
+//
+//   List<XFile> _pickedFiles = [];
+//   int _primaryIndex = 0; // index in _pickedFiles jiski crop hogi
+//
+//   bool _loading        = true;
+//   bool _processingNext = false;
+//   bool _pickFailed     = false;
+//
+//   int _ratioIndex = 1; // default 1:1
+//   CropTransform _cropTransform = const CropTransform(
+//     offset: Offset.zero, scale: 1.0, aspectRatio: 1.0,
+//   );
+//
+//   static const int _maxSelection = 10;
+//
+//   @override
+//   void initState() {
+//     super.initState();
+//     _launchSystemPicker();
+//   }
+//
+//   // ── System Photo Picker launch karo ────────────────────────────────────────
+//   Future<void> _launchSystemPicker() async {
+//     setState(() { _loading = true; _pickFailed = false; });
+//     try {
+//       final files = await _picker.pickMultipleMedia(
+//         imageQuality: 90,
+//         limit: _maxSelection,
+//       );
+//
+//       if (!mounted) return;
+//
+//       if (files.isEmpty) {
+//         // User ne cancel kar diya — screen band karo
+//         Navigator.maybePop(context);
+//         return;
+//       }
+//
+//       setState(() {
+//         _pickedFiles   = files;
+//         _primaryIndex  = 0;
+//         _loading       = false;
+//       });
+//       _resetCrop();
+//     } catch (e) {
+//       if (mounted) setState(() { _loading = false; _pickFailed = true; });
+//     }
+//   }
+//
+//   void _resetCrop() {
+//     setState(() {
+//       _cropTransform = CropTransform(
+//         offset: Offset.zero, scale: 1.0,
+//         aspectRatio: _kRatios[_ratioIndex].ratio,
+//       );
+//     });
+//   }
+//
+//   bool get _primaryIsVideo =>
+//       _pickedFiles.isNotEmpty && _isVideoPath(_pickedFiles[_primaryIndex].path);
+//
+//   // ── Actual pixel crop → File (same maths jaisa pehle tha) ──────────────────
+//   Future<File?> _cropToFile(File origFile) async {
+//     final bytes    = await origFile.readAsBytes();
+//     final codec    = await ui.instantiateImageCodec(bytes);
+//     final frame    = await codec.getNextFrame();
+//     final srcImage = frame.image;
+//
+//     final srcW = srcImage.width.toDouble();
+//     final srcH = srcImage.height.toDouble();
+//
+//     final screenW = MediaQuery.of(context).size.width;
+//
+//     final double? arRatio = _cropTransform.aspectRatio;
+//     double cropBoxW = screenW;
+//     double cropBoxH;
+//     if (arRatio == null) {
+//       final naturalH = srcH / srcW * screenW;
+//       cropBoxH = naturalH.clamp(screenW * 0.56, screenW * 1.25);
+//     } else {
+//       cropBoxH = (screenW / arRatio).clamp(0.0, 380.0);
+//     }
+//
+//     final fitScaleX = cropBoxW / srcW;
+//     final fitScaleY = cropBoxH / srcH;
+//     final fitScale  = fitScaleX > fitScaleY ? fitScaleX : fitScaleY;
+//
+//     final totalScale = fitScale * _cropTransform.scale;
+//
+//     final dispW = srcW * totalScale;
+//     final dispH = srcH * totalScale;
+//
+//     final imgLeft = (cropBoxW - dispW) / 2 + _cropTransform.offset.dx;
+//     final imgTop  = (cropBoxH - dispH) / 2 + _cropTransform.offset.dy;
+//
+//     final srcCropX = (-imgLeft / totalScale).clamp(0.0, srcW - 1);
+//     final srcCropY = (-imgTop  / totalScale).clamp(0.0, srcH - 1);
+//     final srcCropW = (cropBoxW / totalScale).clamp(1.0, srcW - srcCropX);
+//     final srcCropH = (cropBoxH / totalScale).clamp(1.0, srcH - srcCropY);
+//
+//     final outW = srcCropW.round();
+//     final outH = srcCropH.round();
+//
+//     final recorder = ui.PictureRecorder();
+//     final canvas   = Canvas(recorder, Rect.fromLTWH(0, 0, outW.toDouble(), outH.toDouble()));
+//     canvas.drawImageRect(
+//       srcImage,
+//       Rect.fromLTWH(srcCropX, srcCropY, srcCropW, srcCropH),
+//       Rect.fromLTWH(0, 0, outW.toDouble(), outH.toDouble()),
+//       Paint(),
+//     );
+//     final picture  = recorder.endRecording();
+//     final outImage = await picture.toImage(outW, outH);
+//     srcImage.dispose();
+//
+//     final byteData = await outImage.toByteData(format: ui.ImageByteFormat.png);
+//     outImage.dispose();
+//     if (byteData == null) return null;
+//
+//     final tmp  = await getTemporaryDirectory();
+//     final path = '${tmp.path}/crop_${DateTime.now().millisecondsSinceEpoch}.png';
+//     await File(path).writeAsBytes(byteData.buffer.asUint8List());
+//     return File(path);
+//   }
+//
+//   // ── Next button ───────────────────────────────────────────────────────────
+//   Future<void> _onNext() async {
+//     if (_pickedFiles.isEmpty || _processingNext) return;
+//     HapticFeedback.mediumImpact();
+//     setState(() => _processingNext = true);
+//
+//     try {
+//       final mediaItems = <MediaItem>[];
+//       for (int i = 0; i < _pickedFiles.length; i++) {
+//         final path    = _pickedFiles[i].path;
+//         final isVideo = _isVideoPath(path);
+//         File file     = File(path);
+//
+//         // Sirf primary (jiski crop preview dikhi thi) actually crop hoti hai
+//         if (i == _primaryIndex && !isVideo) {
+//           final cropped = await _cropToFile(file);
+//           if (cropped != null) file = cropped;
+//         }
+//
+//         mediaItems.add(MediaItem(path: file.path, isImage: !isVideo));
+//       }
+//
+//       if (!mounted) return;
+//
+//       final posted = await Navigator.push<bool>(
+//         context,
+//         PageRouteBuilder(
+//           pageBuilder: (_, anim, __) => FadeTransition(
+//             opacity: anim,
+//             child: CreatePostScreen(initialMedia: mediaItems),
+//           ),
+//           transitionDuration: const Duration(milliseconds: 280),
+//         ),
+//       );
+//
+//       if (posted == true && mounted) {
+//         Navigator.pop(context, true);
+//       }
+//     } finally {
+//       if (mounted) setState(() => _processingNext = false);
+//     }
+//   }
+//
+//   void _removeAt(int i) {
+//     setState(() {
+//       _pickedFiles.removeAt(i);
+//       if (_pickedFiles.isEmpty) {
+//         Navigator.maybePop(context);
+//         return;
+//       }
+//       if (_primaryIndex >= _pickedFiles.length) {
+//         _primaryIndex = _pickedFiles.length - 1;
+//       } else if (i < _primaryIndex) {
+//         _primaryIndex--;
+//       }
+//     });
+//     _resetCrop();
+//   }
+//
+//   void _setPrimary(int i) {
+//     if (_primaryIndex == i) return;
+//     setState(() => _primaryIndex = i);
+//     _resetCrop();
+//   }
+//
+//   // ══════════════════════════════════════════════════════════════════════════
+//   //  BUILD
+//   // ══════════════════════════════════════════════════════════════════════════
+//   @override
+//   Widget build(BuildContext context) {
+//     return AnnotatedRegion<SystemUiOverlayStyle>(
+//       value: SystemUiOverlayStyle.light,
+//       child: Scaffold(
+//         backgroundColor: _GC.bg,
+//         body: SafeArea(
+//           child: _loading
+//               ? const Center(child: CircularProgressIndicator(color: _GC.accent, strokeWidth: 2))
+//               : _pickFailed
+//               ? _buildPickFailed()
+//               : Column(children: [
+//             _buildTopBar(),
+//
+//             // ── Crop / Video Preview ──────────────────────────────
+//             _primaryIsVideo
+//                 ? _VideoPreviewBox(
+//               key: ValueKey('vid_${_pickedFiles[_primaryIndex].path}'),
+//               file: File(_pickedFiles[_primaryIndex].path),
+//             )
+//                 : _CropPreview(
+//               key: ValueKey('${_pickedFiles[_primaryIndex].path}_$_ratioIndex'),
+//               file: File(_pickedFiles[_primaryIndex].path),
+//               aspectRatio: _kRatios[_ratioIndex].ratio,
+//               onTransformChanged: (t) => _cropTransform = t,
+//             ),
+//
+//             // ── Aspect Ratio Bar — sirf image ke liye ───────────────
+//             if (!_primaryIsVideo) _buildRatioBar(),
+//
+//             // ── Selected thumbnails strip ────────────────────────────
+//             _buildThumbStrip(),
+//
+//             const Spacer(),
+//           ]),
+//         ),
+//       ),
+//     );
+//   }
+//
+//   // ── Top bar ───────────────────────────────────────────────────────────────
+//   Widget _buildTopBar() {
+//     return Container(
+//       color: _GC.bg,
+//       padding: const EdgeInsets.fromLTRB(4, 4, 8, 4),
+//       child: Row(children: [
+//         GestureDetector(
+//           onTap: () => Navigator.maybePop(context),
+//           child: const Padding(padding: EdgeInsets.all(10),
+//               child: Icon(Icons.close_rounded, color: _GC.textPri, size: 24)),
+//         ),
+//         const Spacer(),
+//         const Text('New post', style: TextStyle(
+//             color: _GC.textPri, fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: -0.3)),
+//         const Spacer(),
+//         GestureDetector(
+//           onTap: (_pickedFiles.isNotEmpty && !_processingNext) ? _onNext : null,
+//           child: AnimatedContainer(
+//             duration: const Duration(milliseconds: 180),
+//             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 7),
+//             decoration: BoxDecoration(
+//               color: (_pickedFiles.isNotEmpty && !_processingNext)
+//                   ? _GC.accent : _GC.accent.withOpacity(0.35),
+//               borderRadius: BorderRadius.circular(8),
+//             ),
+//             child: _processingNext
+//                 ? const SizedBox(width: 16, height: 16,
+//                 child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+//                 : const Text('Next', style: TextStyle(
+//                 color: Colors.white, fontWeight: FontWeight.w700,
+//                 fontSize: 14, letterSpacing: -0.2)),
+//           ),
+//         ),
+//       ]),
+//     );
+//   }
+//
+//   // ── Aspect ratio bar ──────────────────────────────────────────────────────
+//   Widget _buildRatioBar() {
+//     return Container(
+//       color: _GC.bg,
+//       height: 44,
+//       child: Row(
+//         mainAxisAlignment: MainAxisAlignment.center,
+//         children: List.generate(_kRatios.length, (i) {
+//           final r        = _kRatios[i];
+//           final selected = i == _ratioIndex;
+//           return GestureDetector(
+//             onTap: () {
+//               if (_ratioIndex == i) return;
+//               setState(() => _ratioIndex = i);
+//               _resetCrop();
+//             },
+//             child: AnimatedContainer(
+//               duration: const Duration(milliseconds: 180),
+//               margin: const EdgeInsets.symmetric(horizontal: 6),
+//               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+//               decoration: BoxDecoration(
+//                 color: selected ? _GC.accent.withOpacity(0.15) : _GC.surfaceEl,
+//                 borderRadius: BorderRadius.circular(20),
+//                 border: Border.all(
+//                     color: selected ? _GC.accent : Colors.transparent, width: 1),
+//               ),
+//               child: Text(r.label, style: TextStyle(
+//                 color: selected ? _GC.accent : _GC.textSec,
+//                 fontSize: 12,
+//                 fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+//               )),
+//             ),
+//           );
+//         }),
+//       ),
+//     );
+//   }
+//
+//   // ── Selected media thumbnail strip (sirf jab 1 se zyada select ho) ─────────
+//   Widget _buildThumbStrip() {
+//     if (_pickedFiles.length <= 1) return const SizedBox.shrink();
+//
+//     return Container(
+//       height: 84,
+//       color: _GC.bg,
+//       padding: const EdgeInsets.symmetric(vertical: 8),
+//       child: ListView.builder(
+//         scrollDirection: Axis.horizontal,
+//         padding: const EdgeInsets.symmetric(horizontal: 12),
+//         itemCount: _pickedFiles.length,
+//         itemBuilder: (_, i) {
+//           final f          = _pickedFiles[i];
+//           final isVideo    = _isVideoPath(f.path);
+//           final isPrimary  = i == _primaryIndex;
+//
+//           return GestureDetector(
+//             onTap: () => _setPrimary(i),
+//             child: Container(
+//               width: 64,
+//               margin: const EdgeInsets.only(right: 8),
+//               child: Stack(fit: StackFit.expand, children: [
+//                 ClipRRect(
+//                   borderRadius: BorderRadius.circular(8),
+//                   child: Image.file(File(f.path), fit: BoxFit.cover),
+//                 ),
+//                 if (isPrimary)
+//                   Container(
+//                     decoration: BoxDecoration(
+//                       borderRadius: BorderRadius.circular(8),
+//                       border: Border.all(color: _GC.accent, width: 2),
+//                     ),
+//                   ),
+//                 if (isVideo)
+//                   const Positioned(
+//                     bottom: 4, left: 4,
+//                     child: Icon(Icons.play_circle_fill_rounded,
+//                         color: Colors.white, size: 16,
+//                         shadows: [Shadow(color: Colors.black54, blurRadius: 3)]),
+//                   ),
+//                 Positioned(
+//                   top: 2, right: 2,
+//                   child: GestureDetector(
+//                     onTap: () => _removeAt(i),
+//                     child: Container(
+//                       width: 18, height: 18,
+//                       decoration: BoxDecoration(
+//                           color: Colors.black.withOpacity(0.65), shape: BoxShape.circle),
+//                       child: const Icon(Icons.close, color: Colors.white, size: 12),
+//                     ),
+//                   ),
+//                 ),
+//               ]),
+//             ),
+//           );
+//         },
+//       ),
+//     );
+//   }
+//
+//   // ── Picker failed / user denied at OS level ─────────────────────────────────
+//   Widget _buildPickFailed() {
+//     return Center(
+//       child: Padding(
+//         padding: const EdgeInsets.all(32),
+//         child: Column(mainAxisSize: MainAxisSize.min, children: [
+//           Container(
+//             width: 80, height: 80,
+//             decoration: BoxDecoration(color: _GC.surfaceEl, shape: BoxShape.circle),
+//             child: const Icon(Icons.photo_library_outlined, color: Color(0xFFA8A8A8), size: 40),
+//           ),
+//           const SizedBox(height: 20),
+//           const Text('Could not open picker',
+//               style: TextStyle(color: _GC.textPri, fontSize: 18, fontWeight: FontWeight.w700)),
+//           const SizedBox(height: 10),
+//           const Text(
+//             'Something went wrong opening the photo picker.\nPlease try again.',
+//             textAlign: TextAlign.center,
+//             style: TextStyle(color: _GC.textSec, fontSize: 14, height: 1.5),
+//           ),
+//           const SizedBox(height: 28),
+//           GestureDetector(
+//             onTap: _launchSystemPicker,
+//             child: Container(
+//               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 13),
+//               decoration: BoxDecoration(color: _GC.accent, borderRadius: BorderRadius.circular(10)),
+//               child: const Text('Try Again',
+//                   style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15)),
+//             ),
+//           ),
+//         ]),
+//       ),
+//     );
+//   }
+// }
+//
+// // ═════════════════════════════════════════════════════════════════════════════
+// //  _CropPreview — pinch/pan inside aspect-ratio clipped box
+// //  Ab AssetEntity ki jagah direct File leta hai.
+// // ═════════════════════════════════════════════════════════════════════════════
+// class _CropPreview extends StatefulWidget {
+//   final File file;
+//   final double? aspectRatio; // null = original
+//   final ValueChanged<CropTransform> onTransformChanged;
+//
+//   const _CropPreview({
+//     super.key,
+//     required this.file,
+//     required this.aspectRatio,
+//     required this.onTransformChanged,
+//   });
+//
+//   @override
+//   State<_CropPreview> createState() => _CropPreviewState();
+// }
+//
+// class _CropPreviewState extends State<_CropPreview> {
+//   Size   _imageSize  = Size.zero;
+//   double _scale      = 1.0;
+//   double _baseScale  = 1.0;
+//   Offset _offset     = Offset.zero;
+//   Offset _startFocal = Offset.zero;
+//   bool   _loaded     = false;
+//
+//   static const double _previewH = 380.0;
+//   static const double _maxScale = 5.0;
+//
+//   @override
+//   void initState() {
+//     super.initState();
+//     _loadImage();
+//   }
+//
+//   @override
+//   void didUpdateWidget(_CropPreview old) {
+//     super.didUpdateWidget(old);
+//     if (old.file.path != widget.file.path) {
+//       setState(() { _loaded = false; _imageSize = Size.zero; _scale = 1.0; _offset = Offset.zero; });
+//       _loadImage();
+//     }
+//   }
+//
+//   Future<void> _loadImage() async {
+//     if (!mounted) return;
+//     final bytes = await widget.file.readAsBytes();
+//     final codec = await ui.instantiateImageCodec(bytes);
+//     final frame = await codec.getNextFrame();
+//     final w     = frame.image.width.toDouble();
+//     final h     = frame.image.height.toDouble();
+//     frame.image.dispose();
+//
+//     if (mounted) setState(() { _imageSize = Size(w, h); _loaded = true; });
+//     _notify();
+//   }
+//
+//   Size _cropBox(double screenW) {
+//     if (widget.aspectRatio == null) {
+//       if (_imageSize == Size.zero) return Size(screenW, screenW);
+//       final naturalH = screenW * _imageSize.height / _imageSize.width;
+//       return Size(screenW, naturalH.clamp(screenW * 0.56, screenW * 1.25));
+//     }
+//     final h = (screenW / widget.aspectRatio!).clamp(0.0, _previewH);
+//     return Size(screenW, h);
+//   }
+//
+//   double _fitScale(Size cropBox) {
+//     if (_imageSize == Size.zero) return 1.0;
+//     final sx = cropBox.width  / _imageSize.width;
+//     final sy = cropBox.height / _imageSize.height;
+//     return sx > sy ? sx : sy;
+//   }
+//
+//   Offset _clamp(Offset off, Size cropBox) {
+//     final fit = _fitScale(cropBox);
+//     final dw  = _imageSize.width  * fit * _scale;
+//     final dh  = _imageSize.height * fit * _scale;
+//     final mx  = ((dw - cropBox.width)  / 2).clamp(0.0, double.infinity);
+//     final my  = ((dh - cropBox.height) / 2).clamp(0.0, double.infinity);
+//     return Offset(off.dx.clamp(-mx, mx), off.dy.clamp(-my, my));
+//   }
+//
+//   void _notify() {
+//     widget.onTransformChanged(CropTransform(
+//       offset: _offset, scale: _scale, aspectRatio: widget.aspectRatio,
+//     ));
+//   }
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     final screenW = MediaQuery.of(context).size.width;
+//     final cropBox = _cropBox(screenW);
+//     final fit     = _fitScale(cropBox);
+//
+//     return SizedBox(
+//       width: screenW,
+//       height: cropBox.height,
+//       child: Stack(alignment: Alignment.center, children: [
+//         Positioned.fill(child: Container(color: Colors.black)),
+//         Center(
+//           child: ClipRect(
+//             child: SizedBox(
+//               width: cropBox.width,
+//               height: cropBox.height,
+//               child: !_loaded
+//                   ? Container(
+//                 color: _GC.surfaceEl,
+//                 child: const Center(
+//                   child: CircularProgressIndicator(color: _GC.accent, strokeWidth: 2),
+//                 ),
+//               )
+//                   : GestureDetector(
+//                 onScaleStart: (d) {
+//                   _baseScale  = _scale;
+//                   _startFocal = d.focalPoint - _offset;
+//                 },
+//                 onScaleUpdate: (d) {
+//                   final newScale = (_baseScale * d.scale).clamp(1.0, _maxScale);
+//                   final rawOff   = d.focalPoint - _startFocal;
+//                   setState(() {
+//                     _scale  = newScale;
+//                     _offset = _clamp(rawOff, cropBox);
+//                   });
+//                   _notify();
+//                 },
+//                 child: OverflowBox(
+//                   maxWidth: double.infinity,
+//                   maxHeight: double.infinity,
+//                   child: Transform.translate(
+//                     offset: _offset,
+//                     child: SizedBox(
+//                       width:  _imageSize == Size.zero ? screenW  : _imageSize.width  * fit * _scale,
+//                       height: _imageSize == Size.zero ? cropBox.height : _imageSize.height * fit * _scale,
+//                       child: Image.file(widget.file, fit: BoxFit.fill),
+//                     ),
+//                   ),
+//                 ),
+//               ),
+//             ),
+//           ),
+//         ),
+//         Center(
+//           child: IgnorePointer(
+//             child: SizedBox(
+//               width: cropBox.width,
+//               height: cropBox.height,
+//               child: CustomPaint(painter: _GridPainter()),
+//             ),
+//           ),
+//         ),
+//       ]),
+//     );
+//   }
+// }
+//
+// // ── Rule-of-thirds grid painter ───────────────────────────────────────────────
+// class _GridPainter extends CustomPainter {
+//   @override
+//   void paint(Canvas canvas, Size size) {
+//     final border = Paint()
+//       ..color = Colors.white.withOpacity(0.85)
+//       ..style = PaintingStyle.stroke
+//       ..strokeWidth = 1.2;
+//     final grid = Paint()
+//       ..color = Colors.white.withOpacity(0.22)
+//       ..style = PaintingStyle.stroke
+//       ..strokeWidth = 0.5;
+//
+//     canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), border);
+//     for (int i = 1; i < 3; i++) {
+//       canvas.drawLine(Offset(size.width  * i / 3, 0),
+//           Offset(size.width  * i / 3, size.height), grid);
+//       canvas.drawLine(Offset(0, size.height * i / 3),
+//           Offset(size.width, size.height * i / 3), grid);
+//     }
+//   }
+//   @override bool shouldRepaint(covariant CustomPainter _) => false;
+// }
+//
+// // ═════════════════════════════════════════════════════════════════════════════
+// //  _VideoPreviewBox — top preview jab selected primary video ho
+// //  Ab thumbnailDataWithSize (photo_manager) ki jagah seedha VideoPlayerController
+// //  se pehla frame paused dikhate hain — koi extra package (video_thumbnail
+// //  waghera) ki zaroorat nahi.
+// // ═════════════════════════════════════════════════════════════════════════════
+// class _VideoPreviewBox extends StatefulWidget {
+//   final File file;
+//   const _VideoPreviewBox({super.key, required this.file});
+//   @override State<_VideoPreviewBox> createState() => _VideoPreviewBoxState();
+// }
+//
+// class _VideoPreviewBoxState extends State<_VideoPreviewBox> {
+//   VideoPlayerController? _controller;
+//   bool _initialized = false;
+//   bool _isPlaying   = false;
+//
+//   @override
+//   void initState() {
+//     super.initState();
+//     _init();
+//   }
+//
+//   @override
+//   void didUpdateWidget(_VideoPreviewBox old) {
+//     super.didUpdateWidget(old);
+//     if (old.file.path != widget.file.path) {
+//       _controller?.dispose();
+//       _controller  = null;
+//       _initialized = false;
+//       _isPlaying   = false;
+//       _init();
+//     }
+//   }
+//
+//   Future<void> _init() async {
+//     final controller = VideoPlayerController.file(widget.file);
+//     await controller.initialize();
+//     await controller.setLooping(true);
+//     if (!mounted) { controller.dispose(); return; }
+//     setState(() { _controller = controller; _initialized = true; });
+//   }
+//
+//   void _togglePlay() {
+//     if (_controller == null) return;
+//     setState(() {
+//       if (_controller!.value.isPlaying) {
+//         _controller!.pause();
+//         _isPlaying = false;
+//       } else {
+//         _controller!.play();
+//         _isPlaying = true;
+//       }
+//     });
+//   }
+//
+//   String _formatDuration(Duration d) {
+//     final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+//     final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+//     return '$m:$s';
+//   }
+//
+//   @override
+//   void dispose() {
+//     _controller?.dispose();
+//     super.dispose();
+//   }
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return GestureDetector(
+//       onTap: _togglePlay,
+//       child: Container(
+//         height: 380,
+//         width: double.infinity,
+//         color: Colors.black,
+//         child: Stack(alignment: Alignment.center, children: [
+//           if (_initialized && _controller != null)
+//             Center(
+//               child: AspectRatio(
+//                 aspectRatio: _controller!.value.aspectRatio,
+//                 child: VideoPlayer(_controller!),
+//               ),
+//             )
+//           else
+//             const Center(child: CircularProgressIndicator(color: _GC.accent, strokeWidth: 2)),
+//
+//           if (!_isPlaying)
+//             Container(
+//               width: 64, height: 64,
+//               decoration: BoxDecoration(color: Colors.black.withOpacity(0.5), shape: BoxShape.circle),
+//               child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 36),
+//             ),
+//
+//           if (_initialized && _controller != null)
+//             Positioned(
+//               bottom: 12, right: 12,
+//               child: Container(
+//                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+//                 decoration: BoxDecoration(
+//                     color: Colors.black.withOpacity(0.6), borderRadius: BorderRadius.circular(6)),
+//                 child: Text(_formatDuration(_controller!.value.duration),
+//                     style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+//               ),
+//             ),
+//         ]),
+//       ),
+//     );
+//   }
+// }
 
 
 

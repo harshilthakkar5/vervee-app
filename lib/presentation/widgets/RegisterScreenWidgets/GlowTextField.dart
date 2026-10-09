@@ -1,4 +1,32 @@
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
@@ -10,6 +38,9 @@ class GlowTextField extends StatefulWidget {
   final bool isPassword;
   final TextInputType keyboardType;
   final TextEditingController? controller;
+  final String? errorText;                 // ← NAYA
+  final VoidCallback? onFocusLost;         // ← NAYA
+  final ValueChanged<String>? onChanged;   // ← NAYA
 
   const GlowTextField({
     super.key,
@@ -18,6 +49,9 @@ class GlowTextField extends StatefulWidget {
     this.isPassword = false,
     this.keyboardType = TextInputType.text,
     this.controller,
+    this.errorText,
+    this.onFocusLost,
+    this.onChanged,
   });
 
   @override
@@ -40,6 +74,7 @@ class _GlowTextFieldState extends State<GlowTextField>
     _focusNode.addListener(() {
       setState(() => _focused = _focusNode.hasFocus);
       _focusNode.hasFocus ? _ctrl.forward() : _ctrl.reverse();
+      if (!_focusNode.hasFocus) widget.onFocusLost?.call();   // ← NAYA
     });
   }
 
@@ -50,64 +85,153 @@ class _GlowTextFieldState extends State<GlowTextField>
     super.dispose();
   }
 
+  // @override
+  // Widget build(BuildContext context) {
+  //   return AnimatedBuilder(
+  //     animation: _glowAnim,
+  //     builder: (context, child) {
+  //       return Container(
+  //         decoration: BoxDecoration(
+  //           borderRadius: BorderRadius.circular(14),
+  //           boxShadow: _focused
+  //               ? [
+  //             BoxShadow(
+  //               color: const Color(0xFF9333EA).withOpacity(0.5 * _glowAnim.value),
+  //               blurRadius: 18 * _glowAnim.value,
+  //               spreadRadius: 2 * _glowAnim.value,
+  //             ),
+  //           ]
+  //               : [],
+  //         ),
+  //         child: TextField(
+  //           controller: widget.controller,
+  //           focusNode: _focusNode,
+  //           obscureText: widget.isPassword && _obscure,
+  //           keyboardType: widget.keyboardType,
+  //           style: const TextStyle(color: Colors.white, fontSize: 15),
+  //           cursorColor: const Color(0xFFD4AF37),
+  //           decoration: InputDecoration(
+  //             hintText: widget.hint,
+  //             hintStyle: TextStyle(color: Colors.white.withOpacity(0.45), fontSize: 15),
+  //             prefixIcon: Icon(
+  //               widget.prefixIcon,
+  //               color: _focused ? const Color(0xFFD4AF37) : Colors.white.withOpacity(0.5),
+  //               size: 20,
+  //             ),
+  //             suffixIcon: widget.isPassword
+  //                 ? GestureDetector(
+  //               onTap: () => setState(() => _obscure = !_obscure),
+  //               child: Icon(
+  //                 _obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+  //                 color: Colors.white.withOpacity(0.5),
+  //                 size: 20,
+  //               ),
+  //             )
+  //                 : null,
+  //             filled: true,
+  //             fillColor: Colors.white.withOpacity(0.09),
+  //             enabledBorder: OutlineInputBorder(
+  //               borderRadius: BorderRadius.circular(14),
+  //               borderSide: BorderSide(color: Colors.white.withOpacity(0.15), width: 1.2),
+  //             ),
+  //             focusedBorder: OutlineInputBorder(
+  //               borderRadius: BorderRadius.circular(14),
+  //               borderSide: const BorderSide(color: Color(0xFF9333EA), width: 1.8),
+  //             ),
+  //             contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+  //           ),
+  //         ),
+  //       );
+  //     },
+  //   );
+  // }
+
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _glowAnim,
-      builder: (context, child) {
-        return Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: _focused
-                ? [
-              BoxShadow(
-                color: const Color(0xFF9333EA).withOpacity(0.5 * _glowAnim.value),
-                blurRadius: 18 * _glowAnim.value,
-                spreadRadius: 2 * _glowAnim.value,
+    final hasError = widget.errorText != null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        AnimatedBuilder(
+          animation: _glowAnim,
+          builder: (context, child) {
+            return Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: _focused
+                    ? [
+                  BoxShadow(
+                    color: (hasError ? Colors.redAccent : const Color(0xFF9333EA))
+                        .withOpacity(0.5 * _glowAnim.value),
+                    blurRadius: 18 * _glowAnim.value,
+                    spreadRadius: 2 * _glowAnim.value,
+                  ),
+                ]
+                    : [],
               ),
-            ]
-                : [],
-          ),
-          child: TextField(
-            controller: widget.controller,
-            focusNode: _focusNode,
-            obscureText: widget.isPassword && _obscure,
-            keyboardType: widget.keyboardType,
-            style: const TextStyle(color: Colors.white, fontSize: 15),
-            cursorColor: const Color(0xFFD4AF37),
-            decoration: InputDecoration(
-              hintText: widget.hint,
-              hintStyle: TextStyle(color: Colors.white.withOpacity(0.45), fontSize: 15),
-              prefixIcon: Icon(
-                widget.prefixIcon,
-                color: _focused ? const Color(0xFFD4AF37) : Colors.white.withOpacity(0.5),
-                size: 20,
-              ),
-              suffixIcon: widget.isPassword
-                  ? GestureDetector(
-                onTap: () => setState(() => _obscure = !_obscure),
-                child: Icon(
-                  _obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                  color: Colors.white.withOpacity(0.5),
-                  size: 20,
+              child: TextField(
+                controller: widget.controller,
+                focusNode: _focusNode,
+                onChanged: widget.onChanged,               // ← NAYA
+                obscureText: widget.isPassword && _obscure,
+                keyboardType: widget.keyboardType,
+                style: const TextStyle(color: Colors.white, fontSize: 15),
+                cursorColor: const Color(0xFFD4AF37),
+                decoration: InputDecoration(
+                  hintText: widget.hint,
+                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.45), fontSize: 15),
+                  prefixIcon: Icon(
+                    widget.prefixIcon,
+                    color: hasError
+                        ? Colors.redAccent
+                        : _focused
+                        ? const Color(0xFFD4AF37)
+                        : Colors.white.withOpacity(0.5),
+                    size: 20,
+                  ),
+                  suffixIcon: widget.isPassword
+                      ? GestureDetector(
+                    onTap: () => setState(() => _obscure = !_obscure),
+                    child: Icon(
+                      _obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                      color: Colors.white.withOpacity(0.5),
+                      size: 20,
+                    ),
+                  )
+                      : null,
+                  filled: true,
+                  fillColor: Colors.white.withOpacity(0.09),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide(
+                      color: hasError ? Colors.redAccent : Colors.white.withOpacity(0.15),
+                      width: 1.2,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide(
+                      color: hasError ? Colors.redAccent : const Color(0xFF9333EA),
+                      width: 1.8,
+                    ),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
                 ),
-              )
-                  : null,
-              filled: true,
-              fillColor: Colors.white.withOpacity(0.09),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: BorderSide(color: Colors.white.withOpacity(0.15), width: 1.2),
               ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(color: Color(0xFF9333EA), width: 1.8),
-              ),
-              contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+            );
+          },
+        ),
+        if (hasError)
+          Padding(
+            padding: const EdgeInsets.only(top: 6, left: 4),
+            child: Text(
+              widget.errorText!,
+              style: const TextStyle(color: Colors.redAccent, fontSize: 12),
             ),
           ),
-        );
-      },
+      ],
     );
   }
 }

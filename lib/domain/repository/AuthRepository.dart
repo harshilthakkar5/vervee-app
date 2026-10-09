@@ -28,6 +28,8 @@ abstract interface class AuthRepository {
      String? gender,
     required String phoneNo,
     required bool terms,
+    String? parentEmail,    // ✅ NEW
+    String? referralCode,
   });
 
   // ✅ OTP Verify — OtpResult milega success pe

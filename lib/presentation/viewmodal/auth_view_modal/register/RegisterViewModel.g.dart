@@ -44,7 +44,7 @@ final class RegisterViewModelProvider
   }
 }
 
-String _$registerViewModelHash() => r'978a63e5dffa43099d97187a05f8ed7b2fdda898';
+String _$registerViewModelHash() => r'a49d59c884e1be8f4c120ecdd00742d8545acfe2';
 
 abstract class _$RegisterViewModel
     extends $Notifier<NetworkResult<RegisteredUser>> {

@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:vervee_app/presentation/screen/VerveeUniverseScreen.dart';
 
+import '../../screen/PartnerPromoCodeScreen.dart';
 import '../../screen/VideoPostDetail.dart';
 import '../../viewmodal/avatar/AvatarViewModel.dart';
 import '../../viewmodal/pofile/ProfileViewmodels.dart';
@@ -55,7 +56,7 @@ class VerveeTopBar extends ConsumerStatefulWidget {
   final VoidCallback? onSearchTap;
   final String title;
   final String subtitle;
-  final VoidCallback onProfile;
+  final VoidCallback? onProfile;
 
   @override
   ConsumerState<VerveeTopBar> createState() => _VerveeTopBarState();
@@ -360,10 +361,17 @@ class _StarMenuButtonState extends State<_StarMenuButton>
     ),
     _StarMenuItem(
       icon: Icons.movie_creation_rounded,
-      label: 'Flash',
+      label: 'Sparks',
       subtitle: 'Watch quick money tips',
       available: true,
       screenBuilder: (_) => const PostDetailScreen(),
+    ),
+    _StarMenuItem(
+      icon: Icons.confirmation_number_rounded,
+      label: 'Partner Promo Code',
+      subtitle: 'Refer friends & grow your network',
+      available: true,
+      screenBuilder: (_) => const PartnerPromoCodeScreen(),
     ),
     _StarMenuItem(
       icon: Icons.groups_rounded,
@@ -500,11 +508,25 @@ class _StarMenuButtonState extends State<_StarMenuButton>
                               color: _kBorder.withOpacity(0.8),
                             ),
                             const SizedBox(height: 4),
-                            for (final item in _items)
-                              _MenuTile(
-                                item: item,
-                                onTap: () => _handleItemTap(item),
+                            // for (final item in _items)
+                            //   _MenuTile(
+                            //     item: item,
+                            //     onTap: () => _handleItemTap(item),
+                            //   ),
+                            ConstrainedBox(
+                              constraints: BoxConstraints(
+                                maxHeight: MediaQuery.of(context).size.height * 0.6,
                               ),
+                              child: SingleChildScrollView(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    for (final item in _items)
+                                      _MenuTile(item: item, onTap: () => _handleItemTap(item)),
+                                  ],
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                       ),

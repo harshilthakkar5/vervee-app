@@ -224,9 +224,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     return Scaffold(
       backgroundColor: kBgDark,
       //appBar: AppBar(VerveeTopBar(onProfile: _openprofile)),
+      // appBar: PreferredSize(
+      //   preferredSize: const Size.fromHeight(70),
+      //   child: VerveeTopBar(onProfile: _openprofile),
+      // ),
+
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(70),
-        child: VerveeTopBar(onProfile: _openprofile),
+        child: const VerveeTopBar(onProfile: null), // ✅ profile screen par avatar tap = kuch nahi
       ),
 
       body: RefreshIndicator(

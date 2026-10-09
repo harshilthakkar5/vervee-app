@@ -14,6 +14,20 @@ part 'UserRegistrationResponse.g.dart';
 // String userRegistrationResponseToJson(UserRegistrationResponse data) => json.encode(data.toJson());
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 @freezed
 abstract class UserRegistrationResponse with _$UserRegistrationResponse {
 
@@ -22,6 +36,8 @@ abstract class UserRegistrationResponse with _$UserRegistrationResponse {
   const factory UserRegistrationResponse({
     @JsonKey(name: "success")
     required bool success,
+    @JsonKey(name: "isUnder18")
+    @Default(false) bool isUnder18,
     @JsonKey(name: "message")
     required String message,
   }) = _UserRegistrationResponse;
@@ -32,7 +48,7 @@ abstract class UserRegistrationResponse with _$UserRegistrationResponse {
   // ✅ "success" filter — NetworkResult handle karega
   // Sirf message Domain model me
   RegisteredUser toDomain() {
-    return RegisteredUser(message: message);
+    return RegisteredUser(message: message, isUnder18: isUnder18);
   }
 }
 

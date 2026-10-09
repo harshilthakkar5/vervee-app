@@ -18,6 +18,9 @@ _UserRegistrationRequest _$UserRegistrationRequestFromJson(
   gender: json['gender'] as String?,
   phoneNo: json['phoneNo'] as String,
   terms: json['terms'] as bool,
+  parentEmail: json['parentEmail'] as String?,
+  referralCode: json['referralCode'] as String?,
+  referKey: json['referKey'] as String?,
 );
 
 Map<String, dynamic> _$UserRegistrationRequestToJson(
@@ -32,4 +35,7 @@ Map<String, dynamic> _$UserRegistrationRequestToJson(
   'gender': instance.gender,
   'phoneNo': instance.phoneNo,
   'terms': instance.terms,
+  'parentEmail': instance.parentEmail,
+  'referralCode': instance.referralCode,
+  'referKey': instance.referKey,
 };

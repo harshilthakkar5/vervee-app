@@ -41,7 +41,7 @@ final class GetPostViewModelProvider
   }
 }
 
-String _$getPostViewModelHash() => r'639d0807d0b7c4134dda1222f22b6d509e9ca5a6';
+String _$getPostViewModelHash() => r'b72f7c4a5c7660cb5b118218ceac9f587fcefb36';
 
 abstract class _$GetPostViewModel extends $Notifier<GetPostState> {
   GetPostState build();

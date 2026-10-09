@@ -10,10 +10,12 @@
 //   ✅ Error snackbar on failure
 // ─────────────────────────────────────────────────────────────────────────────
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../domain/model/post/GetPost.dart';
 import '../../../domain/model/post/PostComment.dart';
+import '../../viewmodal/avatar/AvatarViewModel.dart';
 import '../../viewmodal/post/GetPostViewModel.dart';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -269,15 +271,35 @@ class _CommentSheetState extends State<_CommentSheet> {
                 padding:         const EdgeInsets.fromLTRB(16, 8, 16, 8),
                 itemCount:       allComments.length,
                 separatorBuilder: (_, __) => const SizedBox(height: 4),
+                // itemBuilder: (_, i) {
+                //   final c = allComments[i];
+                //   // ✅ Session comments ko "NEW" badge dikhao
+                //   final isNew = i < _sessionComments.length;
+                //   return _CommentTile(
+                //     comment: c,
+                //     timeAgo: _timeAgo(c.createdAt),
+                //     initial: _initial(c.userName),
+                //     isNew:   isNew,
+                //   );
+                // },
+
                 itemBuilder: (_, i) {
                   final c = allComments[i];
-                  // ✅ Session comments ko "NEW" badge dikhao
                   final isNew = i < _sessionComments.length;
+
+                  // Naya comment (current user ka) agar API se avatar na aaye to
+                  // current user ka avatar fallback
+                  final avatarUrl = c.userAvatarUrl ??
+                      (isNew
+                          ? widget.ref.read(avatarViewModelProvider).generatedMascotUrl
+                          : null);
+
                   return _CommentTile(
-                    comment: c,
-                    timeAgo: _timeAgo(c.createdAt),
-                    initial: _initial(c.userName),
-                    isNew:   isNew,
+                    comment:   c,
+                    timeAgo:   _timeAgo(c.createdAt),
+                    initial:   _initial(c.userName),
+                    avatarUrl: avatarUrl,          // ✅ NEW
+                    isNew:     isNew,
                   );
                 },
               ),
@@ -360,12 +382,14 @@ class _CommentTile extends StatelessWidget {
   final PostComment comment;
   final String      timeAgo;
   final String      initial;
+  final String? avatarUrl;
   final bool        isNew;   // ✅ Session me add kiya = "NEW" badge
 
   const _CommentTile({
     required this.comment,
     required this.timeAgo,
     required this.initial,
+    this.avatarUrl,
     this.isNew = false,
   });
 
@@ -377,22 +401,57 @@ class _CommentTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Avatar
-          Container(
-            width: 32, height: 32,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                colors: [kGold, kPurple],
-                begin:  Alignment.topLeft,
-                end:    Alignment.bottomRight,
-              ),
-            ),
-            child: Center(
+          // Container(
+          //   width: 32, height: 32,
+          //   decoration: const BoxDecoration(
+          //     shape: BoxShape.circle,
+          //     gradient: LinearGradient(
+          //       colors: [kGold, kPurple],
+          //       begin:  Alignment.topLeft,
+          //       end:    Alignment.bottomRight,
+          //     ),
+          //   ),
+          //   child: Center(
+          //     child: Text(initial,
+          //         style: const TextStyle(
+          //             color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
+          //   ),
+          // ),
+          // Avatar
+          Builder(builder: (_) {
+            final hasAvatar = avatarUrl != null && avatarUrl!.isNotEmpty;
+
+            Widget initialWidget() => Center(
               child: Text(initial,
                   style: const TextStyle(
                       color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
-            ),
-          ),
+            );
+
+            return Container(
+              width: 32, height: 32,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: hasAvatar
+                    ? null
+                    : const LinearGradient(
+                  colors: [kGold, kPurple],
+                  begin:  Alignment.topLeft,
+                  end:    Alignment.bottomRight,
+                ),
+              ),
+              child: hasAvatar
+                  ? ClipOval(
+                child: CachedNetworkImage(
+                  imageUrl: avatarUrl!,
+                  width: 32,
+                  height: 32,
+                  fit: BoxFit.cover,
+                  errorWidget: (_, __, ___) => initialWidget(),
+                ),
+              )
+                  : initialWidget(),
+            );
+          }),
           const SizedBox(width: 10),
 
           // Comment body

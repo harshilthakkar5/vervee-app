@@ -19,6 +19,7 @@ import '../widgets/RegisterScreenWidgets/GoogleSignInButton.dart';
 import '../widgets/RegisterScreenWidgets/Particle.dart';
 import '../widgets/RegisterScreenWidgets/SignUpButton.dart';
 import '../widgets/RegisterScreenWidgets/WavePainter.dart';
+import 'ParentVerificationScreen.dart';
 // import '../widgets/LoginScreenWidgets/CandleStick.dart';
 // import '../widgets/LoginScreenWidgets/GoldCoin.dart';
 // import '../widgets/LoginScreenWidgets/GoogleSignInButton.dart';
@@ -47,6 +48,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
   final _confirmCtrl  = TextEditingController();
   final _phoneCtrl    = TextEditingController();
   final _ageCtrl      = TextEditingController();
+  final _parentEmailCtrl = TextEditingController();
+  final _referralCtrl    = TextEditingController();
   DateTime? _selectedDob;
   Country? _phoneCountry;
   // Note: Country aur Gender ke liye controller nahi chahiye
@@ -72,6 +75,20 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
   //   'India', 'United States', 'United Kingdom', 'Canada',
   //   'Australia', 'UAE', 'Singapore', 'Germany', 'France', 'Other'
   // ];
+
+  // DOB se nikli age 18 se kam hai ya nahi
+  bool get _isUnder18 {
+    final a = int.tryParse(_ageCtrl.text);
+    return a != null && a < 18;
+  }
+
+  // ── Inline validation errors (key = field name)
+  final Map<String, String?> _errors = {};
+
+  static const _requiredKeys = [
+    'name', 'email', 'password', 'confirm',
+    'country', 'phone', 'age', 'terms',
+  ];
 
   final List<String> _genders = ['Male', 'Female', 'Other', 'Prefer not to say'];
 
@@ -149,11 +166,82 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
     _phoneCtrl.dispose();
     _ageCtrl.dispose();
 
+    _parentEmailCtrl.dispose();
+    _referralCtrl.dispose();
+
     _particleCtrl.dispose();
     _waveCtrl.dispose();
     _shieldGlowCtrl.dispose();
     _entryCtrl.dispose();
     super.dispose();
+  }
+
+  String? _validate(String key) {
+    switch (key) {
+      case 'name':
+        return _nameCtrl.text.trim().isEmpty ? 'Name is required' : null;
+      case 'email':
+        final v = _emailCtrl.text.trim();
+        if (v.isEmpty) return 'Email is required';
+        if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(v)) {
+          return 'Enter a valid email address';
+        }
+        return null;
+      case 'password':
+        return _passwordCtrl.text.isEmpty ? 'Password is required' : null;
+      case 'confirm':
+        if (_confirmCtrl.text.isEmpty) return 'Please confirm your password';
+        if (_confirmCtrl.text != _passwordCtrl.text) return 'Passwords do not match';
+        return null;
+      case 'country':
+        return _selectedCountry == null ? 'Please select your country' : null;
+      case 'phone':
+        return _phoneCtrl.text.trim().isEmpty ? 'Phone number is required' : null;
+      case 'age':
+        return _ageCtrl.text.isEmpty ? 'Please select your date of birth' : null;
+      case 'parentEmail':
+        if (!_isUnder18) return null;
+        final pv = _parentEmailCtrl.text.trim();
+        if (pv.isEmpty) return "Parent's email is required";
+        if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(pv)) {
+          return 'Enter a valid email address';
+        }
+        if (pv.toLowerCase() == _emailCtrl.text.trim().toLowerCase()) {
+          return "Parent's email must be different from your email";
+        }
+        return null;
+      case 'terms':
+        return _agreeToTerms ? null : 'Please accept terms and conditions';
+    }
+    return null;
+  }
+
+  void _validateField(String key) =>
+      setState(() => _errors[key] = _validate(key));
+
+// Error dikh raha ho toh user type karte hi live update/clear ho jaye
+  void _revalidateIfError(String key) {
+    if (_errors[key] != null) _validateField(key);
+  }
+
+  // bool _validateAll() {
+  //   setState(() {
+  //     for (final k in _requiredKeys) {
+  //       _errors[k] = _validate(k);
+  //     }
+  //   });
+  //   return _requiredKeys.every((k) => _errors[k] == null);
+  // }
+
+  bool _validateAll() {
+    final keys = [..._requiredKeys, if (_isUnder18) 'parentEmail'];
+    setState(() {
+      for (final k in keys) {
+        _errors[k] = _validate(k);
+      }
+      if (!_isUnder18) _errors['parentEmail'] = null;
+    });
+    return keys.every((k) => _errors[k] == null);
   }
 
   // ── CHANGE 5: Sign Up handler — ViewModel ko call karta hai
@@ -162,6 +250,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
 
     // Keyboard band karo (best practice — form submit pe)
     FocusScope.of(context).unfocus();
+
+    if (!_validateAll()) return;
 
     // ref.read() use kiya — kyunki yeh ek baar ka action hai (button tap)
     // ref.watch() sirf build() mein use karte hain
@@ -176,6 +266,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
       //phoneNo:         _phoneCtrl.text,
       phoneNo: '+${_phoneCountry?.phoneCode ?? '91'}${_phoneCtrl.text.trim()}',
       terms:           _agreeToTerms,
+      parentEmail:     _isUnder18 ? _parentEmailCtrl.text.trim() : null, // ✅ NEW
+      referralCode:    _referralCtrl.text.trim().isEmpty
+          ? null
+          : _referralCtrl.text.trim(),
     );
   }
 
@@ -227,7 +321,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
     //   orElse:  () => false,
     // );
 
-
     // ── CHANGE 1: ref.listen type update karo
 // RegisterState → NetworkResult<RegisteredUser>
     ref.listen<NetworkResult<RegisteredUser>>(registerViewModelProvider, (previous, next) {
@@ -236,17 +329,41 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
       switch (next) {
 
       // ✅ Success — OTP screen navigate karo
+      //   case Success(:final data):
+      //     Navigator.push(
+      //       context,
+      //       MaterialPageRoute(
+      //         builder: (_) => OTPScreen(
+      //             email: _emailCtrl.text.trim(),
+      //             password: _passwordCtrl.text,
+      //
+      //         ),
+      //       ),
+      //     );
+
         case Success(:final data):
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => OTPScreen(
+          if (data.isUnder18) {
+            // ✅ Under 18 → OTP nahi, Parent Verification screen
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ParentVerificationScreen(
+                  parentEmail: _parentEmailCtrl.text.trim(),
+                  message: data.message,
+                ),
+              ),
+            );
+          } else {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => OTPScreen(
                   email: _emailCtrl.text.trim(),
                   password: _passwordCtrl.text,
-
+                ),
               ),
-            ),
-          );
+            );
+          }
 
       // ✅ Error — SnackBar dikhao
       // Validation errors bhi yahan aayenge (e.g. "Passwords do not match")
@@ -531,10 +648,18 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                               // ── Name
                               _fieldLabel('Name',isRequired: true),
                               SizedBox(height: screenHeight * 0.008),
-                               GlowTextField(
-                                controller: _nameCtrl,   // ← controller wired
+                              //  GlowTextField(
+                              //   controller: _nameCtrl,   // ← controller wired
+                              //   hint: 'Enter your name',
+                              //   prefixIcon: Icons.person_outline_rounded,
+                              // ),
+                              GlowTextField(
+                                controller: _nameCtrl,
                                 hint: 'Enter your name',
                                 prefixIcon: Icons.person_outline_rounded,
+                                errorText: _errors['name'],
+                                onFocusLost: () => _validateField('name'),
+                                onChanged: (_) => _revalidateIfError('name'),
                               ),
 
                               SizedBox(height: screenHeight * 0.016),
@@ -542,11 +667,22 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                               // ── Email
                               _fieldLabel('Email', isRequired: true),
                               SizedBox(height: screenHeight * 0.008),
+                              // GlowTextField(
+                              //   controller: _emailCtrl,    // ← NAYA
+                              //   hint: 'Enter your email',
+                              //   prefixIcon: Icons.mail_outline_rounded,
+                              //   keyboardType: TextInputType.emailAddress,
+                              // ),
+
+                              // Email
                               GlowTextField(
-                                controller: _emailCtrl,    // ← NAYA
+                                controller: _emailCtrl,
                                 hint: 'Enter your email',
                                 prefixIcon: Icons.mail_outline_rounded,
                                 keyboardType: TextInputType.emailAddress,
+                                errorText: _errors['email'],
+                                onFocusLost: () => _validateField('email'),
+                                onChanged: (_) => _revalidateIfError('email'),
                               ),
 
                               SizedBox(height: screenHeight * 0.016),
@@ -554,11 +690,28 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                               // ── Password
                               _fieldLabel('Password', isRequired: true),
                               SizedBox(height: screenHeight * 0.008),
-                                GlowTextField(
-                                controller: _passwordCtrl, // ← controller wired
+                              //   GlowTextField(
+                              //   controller: _passwordCtrl, // ← controller wired
+                              //   hint: 'Enter your password',
+                              //   prefixIcon: Icons.lock_outline_rounded,
+                              //   isPassword: true,
+                              // ),
+
+                              // Password
+                              GlowTextField(
+                                controller: _passwordCtrl,
                                 hint: 'Enter your password',
                                 prefixIcon: Icons.lock_outline_rounded,
                                 isPassword: true,
+                                errorText: _errors['password'],
+                                onFocusLost: () {
+                                  _validateField('password');
+                                  if (_confirmCtrl.text.isNotEmpty) _validateField('confirm');
+                                },
+                                onChanged: (_) {
+                                  _revalidateIfError('password');
+                                  if (_confirmCtrl.text.isNotEmpty) _validateField('confirm'); // password badla toh match dobara check
+                                },
                               ),
 
                               SizedBox(height: screenHeight * 0.016),
@@ -566,11 +719,22 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                               // ── Confirm Password
                               _fieldLabel('Confirm Password', isRequired: true),
                               SizedBox(height: screenHeight * 0.008),
-                                GlowTextField(
-                                controller: _confirmCtrl,  // ← controller wired
+                              //   GlowTextField(
+                              //   controller: _confirmCtrl,  // ← controller wired
+                              //   hint: 'Confirm your password',
+                              //   prefixIcon: Icons.lock_outline_rounded,
+                              //   isPassword: true,
+                              // ),
+
+                              // Confirm Password
+                              GlowTextField(
+                                controller: _confirmCtrl,
                                 hint: 'Confirm your password',
                                 prefixIcon: Icons.lock_outline_rounded,
                                 isPassword: true,
+                                errorText: _errors['confirm'],
+                                onFocusLost: () => _validateField('confirm'),
+                                onChanged: (_) => _revalidateIfError('confirm'),
                               ),
 
                               SizedBox(height: screenHeight * 0.016),
@@ -578,13 +742,31 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                               // ── Country Dropdown
                               _fieldLabel('Country', isRequired: true),
                               SizedBox(height: screenHeight * 0.008),
+                              // GlowDropdownCountry(
+                              //   hint: 'Select your country',
+                              //   prefixIcon: Icons.public_rounded,
+                              //   items: _countries,
+                              //   value: _selectedCountry,
+                              //   onChanged: (val) =>
+                              //       setState(() => _selectedCountry = val),
+                              // ),
+
+                              // Country
                               GlowDropdownCountry(
                                 hint: 'Select your country',
                                 prefixIcon: Icons.public_rounded,
                                 items: _countries,
                                 value: _selectedCountry,
-                                onChanged: (val) =>
-                                    setState(() => _selectedCountry = val),
+                                errorText: _errors['country'],
+                                onChanged: (val) => setState(() {
+                                  _selectedCountry = val;
+                                  _errors['country'] = null;
+
+                                  // ✅ NEW: country select hote hi phone code auto-set
+                                  if (val != null) {
+                                    _phoneCountry = val;
+                                  }
+                                }),
                               ),
 
                               SizedBox(height: screenHeight * 0.016),
@@ -624,11 +806,22 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                                   const SizedBox(width: 8),
                                   // ── Number field
                                   Expanded(
+                                    // child: GlowTextField(
+                                    //   controller: _phoneCtrl,
+                                    //   hint: '1234567890',
+                                    //   prefixIcon: Icons.phone_outlined,
+                                    //   keyboardType: TextInputType.phone,
+                                    // ),
+
+                                    // Phone number field (Row ke andar wala GlowTextField)
                                     child: GlowTextField(
                                       controller: _phoneCtrl,
                                       hint: '1234567890',
                                       prefixIcon: Icons.phone_outlined,
                                       keyboardType: TextInputType.phone,
+                                      errorText: _errors['phone'],
+                                      onFocusLost: () => _validateField('phone'),
+                                      onChanged: (_) => _revalidateIfError('phone'),
                                     ),
                                   ),
                                 ],
@@ -661,16 +854,58 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                               GestureDetector(
                                 onTap: _pickDateOfBirth,
                                 child: AbsorbPointer(   // ← keyboard nahi khulega, sirf calendar khulega
+                                  // child: GlowTextField(
+                                  //   controller: _ageCtrl,
+                                  //   hint: 'Select date of birth to auto-fill age',
+                                  //   prefixIcon: Icons.cake_outlined,
+                                  //   keyboardType: TextInputType.number,
+                                  // ),
+
                                   child: GlowTextField(
                                     controller: _ageCtrl,
                                     hint: 'Select date of birth to auto-fill age',
                                     prefixIcon: Icons.cake_outlined,
                                     keyboardType: TextInputType.number,
+                                    errorText: _errors['age'],
                                   ),
                                 ),
                               ),
 
                               SizedBox(height: screenHeight * 0.016),
+
+                              // ── Parent Email (sirf under 18)
+                              AnimatedSize(
+                                duration: const Duration(milliseconds: 250),
+                                curve: Curves.easeOut,
+                                alignment: Alignment.topCenter,
+                                child: _isUnder18
+                                    ? Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _fieldLabel("Parent's Email", isRequired: true),
+                                    SizedBox(height: screenHeight * 0.008),
+                                    GlowTextField(
+                                      controller: _parentEmailCtrl,
+                                      hint: "Enter your parent's email",
+                                      prefixIcon: Icons.family_restroom_rounded,
+                                      keyboardType: TextInputType.emailAddress,
+                                      errorText: _errors['parentEmail'],
+                                      onFocusLost: () => _validateField('parentEmail'),
+                                      onChanged: (_) => _revalidateIfError('parentEmail'),
+                                    ),
+                                    SizedBox(height: screenHeight * 0.006),
+                                    Text(
+                                      'Since you are under 18, a verification link will be sent to your parent.',
+                                      style: TextStyle(
+                                        color: Colors.white.withOpacity(0.5),
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                    SizedBox(height: screenHeight * 0.016),
+                                  ],
+                                )
+                                    : const SizedBox.shrink(),
+                              ),
 
                               // ── Gender Dropdown
                               _fieldLabel('Gender'),
@@ -684,12 +919,28 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                                     setState(() => _selectedGender = val),
                               ),
 
+                             // SizedBox(height: screenHeight * 0.02),
+
+                              SizedBox(height: screenHeight * 0.016),
+
+                              _fieldLabel('Referral Code (optional)'),
+                              SizedBox(height: screenHeight * 0.008),
+                              GlowTextField(
+                                controller: _referralCtrl,
+                                hint: 'Enter referral code',
+                                prefixIcon: Icons.card_giftcard_rounded,
+                              ),
+
                               SizedBox(height: screenHeight * 0.02),
 
                               // ── Terms & Conditions checkbox
                               GestureDetector(
-                                onTap: () =>
-                                    setState(() => _agreeToTerms = !_agreeToTerms),
+                                // onTap: () =>
+                                //     setState(() => _agreeToTerms = !_agreeToTerms),
+                                onTap: () => setState(() {
+                                  _agreeToTerms = !_agreeToTerms;
+                                  _errors['terms'] = _validate('terms');
+                                }),
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -779,6 +1030,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                                   ],
                                 ),
                               ),
+                              if (_errors['terms'] != null)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 6, left: 4),
+                                  child: Text(
+                                    _errors['terms']!,
+                                    style: const TextStyle(color: Colors.redAccent, fontSize: 12),
+                                  ),
+                                ),
 
 
 
@@ -1048,11 +1307,22 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
       },
     );
 
+    // if (picked != null) {
+    //   setState(() {
+    //     _selectedDob = picked;
+    //     _ageCtrl.text = _calculateAge(picked).toString();
+    //   });
+    // }
+
     if (picked != null) {
       setState(() {
         _selectedDob = picked;
         _ageCtrl.text = _calculateAge(picked).toString();
+        _errors['age'] = null;
+        if (!_isUnder18) _errors['parentEmail'] = null;
       });
+    } else {
+      _validateField('age');
     }
   }
 

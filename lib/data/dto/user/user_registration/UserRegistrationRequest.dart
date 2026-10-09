@@ -32,6 +32,12 @@ abstract class UserRegistrationRequest with _$UserRegistrationRequest {
     required String phoneNo,
     @JsonKey(name: "terms")
     required bool terms,
+    @JsonKey(name: "parentEmail")
+    String? parentEmail,
+    @JsonKey(name: "referralCode")// ✅ NEW
+    String? referralCode,
+    @JsonKey(name: "referKey")// ✅ NEW
+    String? referKey,       // ✅ NEW (web dono bhejta hai)
   }) = _UserRegistrationRequest;
 
   factory UserRegistrationRequest.fromJson(Map<String, dynamic> json) => _$UserRegistrationRequestFromJson(json);

@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$UserRegistrationResponse {
 
-@JsonKey(name: "success") bool get success;@JsonKey(name: "message") String get message;
+@JsonKey(name: "success") bool get success;@JsonKey(name: "isUnder18") bool get isUnder18;@JsonKey(name: "message") String get message;
 /// Create a copy of UserRegistrationResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $UserRegistrationResponseCopyWith<UserRegistrationResponse> get copyWith => _$Us
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is UserRegistrationResponse&&(identical(other.success, success) || other.success == success)&&(identical(other.message, message) || other.message == message));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is UserRegistrationResponse&&(identical(other.success, success) || other.success == success)&&(identical(other.isUnder18, isUnder18) || other.isUnder18 == isUnder18)&&(identical(other.message, message) || other.message == message));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,success,message);
+int get hashCode => Object.hash(runtimeType,success,isUnder18,message);
 
 @override
 String toString() {
-  return 'UserRegistrationResponse(success: $success, message: $message)';
+  return 'UserRegistrationResponse(success: $success, isUnder18: $isUnder18, message: $message)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $UserRegistrationResponseCopyWith<$Res>  {
   factory $UserRegistrationResponseCopyWith(UserRegistrationResponse value, $Res Function(UserRegistrationResponse) _then) = _$UserRegistrationResponseCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: "success") bool success,@JsonKey(name: "message") String message
+@JsonKey(name: "success") bool success,@JsonKey(name: "isUnder18") bool isUnder18,@JsonKey(name: "message") String message
 });
 
 
@@ -65,9 +65,10 @@ class _$UserRegistrationResponseCopyWithImpl<$Res>
 
 /// Create a copy of UserRegistrationResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? success = null,Object? message = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? success = null,Object? isUnder18 = null,Object? message = null,}) {
   return _then(_self.copyWith(
 success: null == success ? _self.success : success // ignore: cast_nullable_to_non_nullable
+as bool,isUnder18: null == isUnder18 ? _self.isUnder18 : isUnder18 // ignore: cast_nullable_to_non_nullable
 as bool,message: null == message ? _self.message : message // ignore: cast_nullable_to_non_nullable
 as String,
   ));
@@ -154,10 +155,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: "success")  bool success, @JsonKey(name: "message")  String message)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: "success")  bool success, @JsonKey(name: "isUnder18")  bool isUnder18, @JsonKey(name: "message")  String message)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _UserRegistrationResponse() when $default != null:
-return $default(_that.success,_that.message);case _:
+return $default(_that.success,_that.isUnder18,_that.message);case _:
   return orElse();
 
 }
@@ -175,10 +176,10 @@ return $default(_that.success,_that.message);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: "success")  bool success, @JsonKey(name: "message")  String message)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: "success")  bool success, @JsonKey(name: "isUnder18")  bool isUnder18, @JsonKey(name: "message")  String message)  $default,) {final _that = this;
 switch (_that) {
 case _UserRegistrationResponse():
-return $default(_that.success,_that.message);case _:
+return $default(_that.success,_that.isUnder18,_that.message);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -195,10 +196,10 @@ return $default(_that.success,_that.message);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: "success")  bool success, @JsonKey(name: "message")  String message)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: "success")  bool success, @JsonKey(name: "isUnder18")  bool isUnder18, @JsonKey(name: "message")  String message)?  $default,) {final _that = this;
 switch (_that) {
 case _UserRegistrationResponse() when $default != null:
-return $default(_that.success,_that.message);case _:
+return $default(_that.success,_that.isUnder18,_that.message);case _:
   return null;
 
 }
@@ -210,10 +211,11 @@ return $default(_that.success,_that.message);case _:
 @JsonSerializable()
 
 class _UserRegistrationResponse extends UserRegistrationResponse {
-  const _UserRegistrationResponse({@JsonKey(name: "success") required this.success, @JsonKey(name: "message") required this.message}): super._();
+  const _UserRegistrationResponse({@JsonKey(name: "success") required this.success, @JsonKey(name: "isUnder18") this.isUnder18 = false, @JsonKey(name: "message") required this.message}): super._();
   factory _UserRegistrationResponse.fromJson(Map<String, dynamic> json) => _$UserRegistrationResponseFromJson(json);
 
 @override@JsonKey(name: "success") final  bool success;
+@override@JsonKey(name: "isUnder18") final  bool isUnder18;
 @override@JsonKey(name: "message") final  String message;
 
 /// Create a copy of UserRegistrationResponse
@@ -229,16 +231,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _UserRegistrationResponse&&(identical(other.success, success) || other.success == success)&&(identical(other.message, message) || other.message == message));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _UserRegistrationResponse&&(identical(other.success, success) || other.success == success)&&(identical(other.isUnder18, isUnder18) || other.isUnder18 == isUnder18)&&(identical(other.message, message) || other.message == message));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,success,message);
+int get hashCode => Object.hash(runtimeType,success,isUnder18,message);
 
 @override
 String toString() {
-  return 'UserRegistrationResponse(success: $success, message: $message)';
+  return 'UserRegistrationResponse(success: $success, isUnder18: $isUnder18, message: $message)';
 }
 
 
@@ -249,7 +251,7 @@ abstract mixin class _$UserRegistrationResponseCopyWith<$Res> implements $UserRe
   factory _$UserRegistrationResponseCopyWith(_UserRegistrationResponse value, $Res Function(_UserRegistrationResponse) _then) = __$UserRegistrationResponseCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: "success") bool success,@JsonKey(name: "message") String message
+@JsonKey(name: "success") bool success,@JsonKey(name: "isUnder18") bool isUnder18,@JsonKey(name: "message") String message
 });
 
 
@@ -266,9 +268,10 @@ class __$UserRegistrationResponseCopyWithImpl<$Res>
 
 /// Create a copy of UserRegistrationResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? success = null,Object? message = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? success = null,Object? isUnder18 = null,Object? message = null,}) {
   return _then(_UserRegistrationResponse(
 success: null == success ? _self.success : success // ignore: cast_nullable_to_non_nullable
+as bool,isUnder18: null == isUnder18 ? _self.isUnder18 : isUnder18 // ignore: cast_nullable_to_non_nullable
 as bool,message: null == message ? _self.message : message // ignore: cast_nullable_to_non_nullable
 as String,
   ));

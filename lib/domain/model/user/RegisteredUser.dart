@@ -8,9 +8,23 @@ part 'RegisteredUser.freezed.dart';
 // NetworkResult.success() se handle hota hai Repository me
 // Isliye yahan sirf message field hai
 
+
+
+
+
+
+
+
+
+
+
+
+
+
 @freezed
 abstract class RegisteredUser with _$RegisteredUser {
   const factory RegisteredUser({
     required String message, // "Registration successful!" dikhayenge UI me
+    @Default(false) bool isUnder18,
   }) = _RegisteredUser;
 }

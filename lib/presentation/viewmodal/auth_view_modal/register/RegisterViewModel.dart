@@ -110,6 +110,8 @@ class RegisterViewModel extends _$RegisterViewModel {
      String? gender,
     required String phoneNo,
     required bool terms,
+    String? parentEmail,    // ✅ NEW
+    String? referralCode,
   }) async {
 
     // ✅ Validation pehle — loading set karne se pehle
@@ -131,6 +133,13 @@ class RegisterViewModel extends _$RegisterViewModel {
       return;
     }
 
+    // ✅ NEW — under 18 ho to parent email zaruri
+    final ageInt = int.tryParse(age.trim());
+    if (ageInt != null && ageInt < 18 && (parentEmail == null || parentEmail.trim().isEmpty)) {
+      state = const NetworkResult.error(message: "Parent's email is required.");
+      return;
+    }
+
     // ✅ Validation pass — ab loading dikhao
     state = const NetworkResult.loading();
 
@@ -146,6 +155,8 @@ class RegisterViewModel extends _$RegisterViewModel {
       gender: gender?.trim(),
       phoneNo: phoneNo.trim(),
       terms: terms,
+      parentEmail: parentEmail?.trim(),                                   // ✅ NEW
+      referralCode: (referralCode?.trim().isEmpty ?? true) ? null : referralCode!.trim(), // ✅ NEW
     );
 
     // ✅ Repository already NetworkResult return karta hai

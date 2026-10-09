@@ -83,16 +83,17 @@ final List<MarketTicker> marketTickers = [
   MarketTicker('SILVER', '-1.1%', false),
 ];
 
+
 const _filterCategories = [
   // 'All', 'Forex & Currency', 'Crypto', 'Stocks',
   // 'Commodities', 'Economy', 'Gold & Commodities', 'Oil Market', 'Other',
   'All',
+  'Vervee Academy',
   'Oil Market',
   'Gold & Commodities',
   'Forex & Currency',
   'Economic Policy',
   'Market Volatility',
-  'Vervee Academy',
 ];
 
 
@@ -654,6 +655,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 ),
                 delegate: SliverChildBuilderDelegate(
                       (context, index) => PostCard(
+                      key: ValueKey(feedState.posts[index].id),
                       post:     feedState.posts[index],
                       isTablet: false,
                     ),
@@ -671,6 +673,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             SliverList(
               delegate: SliverChildBuilderDelegate(
                     (context, index) => PostCard(
+                      key: ValueKey(feedState.posts[index].id),
                       post:     feedState.posts[index],
                       isTablet: false,
                     ),

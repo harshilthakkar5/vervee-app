@@ -29,6 +29,7 @@ abstract class CommentResponse with _$CommentResponse {
     content:   content,
     createdAt: createdAt,
     userName:  user.name,
+    userAvatarUrl: user.avatar?.mascotUrl,
   );
 }
 
@@ -36,8 +37,19 @@ abstract class CommentResponse with _$CommentResponse {
 abstract class CommentUser with _$CommentUser {
   const factory CommentUser({
     @JsonKey(name: 'name') required String name,
+    @JsonKey(name: 'avatar') CommentAvatar? avatar,
   }) = _CommentUser;
 
   factory CommentUser.fromJson(Map<String, dynamic> json) =>
       _$CommentUserFromJson(json);
+}
+
+@freezed
+abstract class CommentAvatar with _$CommentAvatar {          // ✅ NEW
+  const factory CommentAvatar({
+    @JsonKey(name: 'mascotUrl') String? mascotUrl,
+  }) = _CommentAvatar;
+
+  factory CommentAvatar.fromJson(Map<String, dynamic> json) =>
+      _$CommentAvatarFromJson(json);
 }

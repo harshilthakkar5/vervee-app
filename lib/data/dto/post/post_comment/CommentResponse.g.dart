@@ -22,8 +22,18 @@ Map<String, dynamic> _$CommentResponseToJson(_CommentResponse instance) =>
       'user': instance.user,
     };
 
-_CommentUser _$CommentUserFromJson(Map<String, dynamic> json) =>
-    _CommentUser(name: json['name'] as String);
+_CommentUser _$CommentUserFromJson(Map<String, dynamic> json) => _CommentUser(
+  name: json['name'] as String,
+  avatar: json['avatar'] == null
+      ? null
+      : CommentAvatar.fromJson(json['avatar'] as Map<String, dynamic>),
+);
 
 Map<String, dynamic> _$CommentUserToJson(_CommentUser instance) =>
-    <String, dynamic>{'name': instance.name};
+    <String, dynamic>{'name': instance.name, 'avatar': instance.avatar};
+
+_CommentAvatar _$CommentAvatarFromJson(Map<String, dynamic> json) =>
+    _CommentAvatar(mascotUrl: json['mascotUrl'] as String?);
+
+Map<String, dynamic> _$CommentAvatarToJson(_CommentAvatar instance) =>
+    <String, dynamic>{'mascotUrl': instance.mascotUrl};

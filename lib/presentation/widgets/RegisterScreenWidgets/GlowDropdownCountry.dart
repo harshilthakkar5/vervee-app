@@ -1,4 +1,26 @@
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 import 'package:country_picker/country_picker.dart';
 import 'package:flutter/material.dart';
 
@@ -8,6 +30,7 @@ class GlowDropdownCountry extends StatefulWidget {
   final List<Country> items;
   final Country? value;
   final ValueChanged<Country?> onChanged;
+  final String? errorText;   // ← NAYA field
 
   const GlowDropdownCountry({
     super.key,
@@ -16,6 +39,7 @@ class GlowDropdownCountry extends StatefulWidget {
     required this.items,
     required this.onChanged,
     this.value,
+    this.errorText,
   });
 
   @override
@@ -70,7 +94,14 @@ class _GlowDropdownCountryState extends State<GlowDropdownCountry> {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedContainer(
+
+    final hasError = widget.errorText != null;
+
+    return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+     AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(14),
@@ -96,11 +127,19 @@ class _GlowDropdownCountryState extends State<GlowDropdownCountry> {
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.09),
               borderRadius: BorderRadius.circular(14),
+              // border: Border.all(
+              //   color: _focused
+              //       ? const Color(0xFF9333EA)
+              //       : Colors.white.withOpacity(0.15),
+              //   width: _focused ? 1.8 : 1.2,
+              // ),
               border: Border.all(
-                color: _focused
-                    ? const Color(0xFF9333EA)
-                    : Colors.white.withOpacity(0.15),
-                width: _focused ? 1.8 : 1.2,
+                color: hasError
+                    ? Colors.redAccent
+                    : _focused
+                        ? const Color(0xFF9333EA)
+                        : Colors.white.withOpacity(0.15),
+                width: _focused || hasError ? 1.8 : 1.2,
               ),
             ),
             child: Row(
@@ -140,11 +179,22 @@ class _GlowDropdownCountryState extends State<GlowDropdownCountry> {
                 ),
                 Icon(Icons.keyboard_arrow_down_rounded,
                     color: Colors.white.withOpacity(0.5), size: 22),
+
+                if (hasError)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6, left: 4),
+                    child: Text(
+                      widget.errorText!,
+                      style: const TextStyle(color: Colors.redAccent, fontSize: 12),
+                    ),
+                  ),
               ],
             ),
           ),
         ),
       ),
+    ),
+        ]
     );
   }
 }

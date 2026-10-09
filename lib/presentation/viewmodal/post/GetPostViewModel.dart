@@ -56,12 +56,22 @@ sealed class GetPostState with _$GetPostState {
 @riverpod
 class GetPostViewModel extends _$GetPostViewModel {
 
+  // static const int _limit = 5;
+  // static const int _maxEmptyFetchAttempts = 8;
+
   static const int _limit = 5;
+  static const int _verveeLimit = 20;       // Vervee ke liye badi page size (kam round trips)
+  static const int _maxVerveeScanPages = 15; // safety limit
+  static const String _verveeCategory = 'Vervee Academy';
+
+  int _requestToken = 0; // purani/stale requests ko cancel karne ke liye
+
 
   @override
   GetPostState build() {
     Future.microtask(() => loadPosts());
-    return const GetPostState();
+    //return const GetPostState();
+    return const GetPostState(isLoading: true);
   }
 
   // ────────────────────────────────────────────────────────────────────────────
@@ -102,136 +112,323 @@ class GetPostViewModel extends _$GetPostViewModel {
   //   );
   // }
 
-  // ── loadPosts — cache pehle, phir API ────────────────────────────────────────
-  Future<void> loadPosts({bool isRefresh = false}) async {
-    if (state.isLoading) return;
 
-    // ✅ isRefresh nahi hai toh pehle cache check karo
-    if (!isRefresh) {
-      final cached = await PostCacheService.loadPosts(state.selectedCategory);
+  // ── loadPosts — cache pehle, phir API ────────────────────────────────────────
+//   Future<void> loadPosts({bool isRefresh = false}) async {
+//     if (state.isLoading) return;
+//
+//     // ✅ isRefresh nahi hai toh pehle cache check karo
+//     if (!isRefresh) {
+//       final cached = await PostCacheService.loadPosts(state.selectedCategory);
+//
+//       if (cached != null && cached.isNotEmpty) {
+//         // ✅ Cache se instantly dikhao — loading nahi
+//         state = state.copyWith(
+//           posts:        cached,
+//           isLoading:    false,
+//           currentPage:  1,
+//           hasReachedEnd: cached.length < _limit,
+//           errorMessage: null,
+//         );
+//
+//         // ✅ Cache expire ho gayi toh background me fresh data lao
+//         // final valid = await PostCacheService.isCacheValid(state.selectedCategory);
+//         // if (!valid)
+//           _backgroundRefresh();
+//
+//         return; // Cache se show kar diya
+//       }
+//     }
+//
+//     // ✅ Cache nahi hai ya force refresh — normal flow
+//     state = state.copyWith(
+//       isLoading:    true,
+//       errorMessage: null,
+//       posts:        isRefresh ? [] : state.posts,
+//       currentPage:  isRefresh ? 1  : state.currentPage,
+//       hasReachedEnd: isRefresh ? false : state.hasReachedEnd,
+//     );
+//
+//     final result = await ref.read(postRepositoryProvider).getPosts(
+//       page:     1,
+//       limit:    _limit,
+//       search:   state.searchQuery,
+//       category: state.selectedCategory,
+//     );
+//
+//     result.when(
+//       initial: () {},
+//       loading: () {},
+//       success: (posts) {
+//         state = state.copyWith(
+//           posts:        posts,
+//           currentPage:  1,
+//           isLoading:    false,
+//           hasReachedEnd: posts.length < _limit,
+//         );
+//         // ✅ Fresh data cache me save karo
+//         PostCacheService.savePosts(
+//           posts:    posts,
+//           category: state.selectedCategory,
+//         );
+//       },
+//       error: (message, _) => state = state.copyWith(
+//         isLoading:    false,
+//         errorMessage: message,
+//       ),
+//     );
+//   }
+//
+// // ✅ Background refresh — user ko pata nahi chalega
+//   Future<void> _backgroundRefresh() async {
+//     try {
+//       final result = await ref.read(postRepositoryProvider).getPosts(
+//         page:     1,
+//         limit:    _limit,
+//         search:   state.searchQuery,
+//         category: state.selectedCategory,
+//       );
+//
+//       result.when(
+//         initial: () {},
+//         loading: () {},
+//         success: (posts) {
+//           // ✅ Silently update + cache save
+//           state = state.copyWith(posts: posts);
+//           PostCacheService.savePosts(
+//             posts:    posts,
+//             category: state.selectedCategory,
+//           );
+//         },
+//         error: (_, __) {}, // Fail ho toh ignore
+//       );
+//     } catch (_) {}
+//   }
+//
+// // ✅ refresh() — cache clear karke fresh data lao
+//   Future<void> refresh() async {
+//     await PostCacheService.clearAllCache();
+//     return loadPosts(isRefresh: true);
+//   }
+//
+//   Future<void> loadMore() async {
+//     if (state.isLoadingMore || state.hasReachedEnd || state.isLoading) return;
+//
+//     state = state.copyWith(isLoadingMore: true);
+//     final nextPage = state.currentPage + 1;
+//
+//     final result = await ref.read(postRepositoryProvider).getPosts(
+//       page:     nextPage,
+//       limit:    _limit,
+//       search:   state.searchQuery,
+//       category: state.selectedCategory,
+//     );
+//
+//     result.when(
+//       initial: () {},
+//       loading: () {},
+//       success: (newPosts) => state = state.copyWith(
+//         posts:         [...state.posts, ...newPosts],
+//         currentPage:   nextPage,
+//         isLoadingMore: false,
+//         hasReachedEnd: newPosts.length < _limit,
+//       ),
+//       error: (message, _) => state = state.copyWith(
+//         isLoadingMore: false,
+//         errorMessage:  message,
+//       ),
+//     );
+//   }
+
+
+
+  bool get _isVerveeAcademyFilter => state.selectedCategory == _verveeCategory;
+
+  bool _isVerveePost(GetPost p) =>
+      p.userName.trim().toLowerCase() == 'vervee academy';
+
+// ── Single page fetch helper ────────────────────────────────────────────────
+  Future<({List<GetPost>? posts, String? error})> _fetchPage({
+    required int page,
+    required String category,
+    required int limit,
+  }) async {
+    final result = await ref.read(postRepositoryProvider).getPosts(
+      page: page,
+      limit: limit,
+      search: state.searchQuery,
+      category: category,
+    );
+    return result.when<({List<GetPost>? posts, String? error})>(
+      initial: () => (posts: null, error: null),
+      loading: () => (posts: null, error: null),
+      success: (posts) => (posts: posts, error: null),
+      error: (message, _) => (posts: null, error: message),
+    );
+  }
+
+// ── Vervee Academy: jab tak _limit posts na mile / end na aaye, pages scan karo
+  Future<({List<GetPost> posts, int lastPage, bool reachedEnd, String? error})?>
+  _fetchVerveePosts({required int startPage, required int token}) async {
+    final found = <GetPost>[];
+    var page = startPage - 1;
+    var reachedEnd = false;
+
+    for (var i = 0; i < _maxVerveeScanPages; i++) {
+      final next = page + 1;
+      final res = await _fetchPage(page: next, category: 'All', limit: _verveeLimit);
+
+      if (token != _requestToken) return null; // category badal gayi — discard
+
+      if (res.error != null) {
+        return (posts: found, lastPage: page, reachedEnd: false, error: res.error);
+      }
+
+      page = next;
+      final raw = res.posts ?? const <GetPost>[];
+      found.addAll(raw.where(_isVerveePost));
+
+      if (raw.length < _verveeLimit) {
+        reachedEnd = true;
+        break;
+      }
+      if (found.length >= _limit) break;
+    }
+
+    return (posts: found, lastPage: page, reachedEnd: reachedEnd, error: null);
+  }
+
+// ── loadPosts ───────────────────────────────────────────────────────────────
+  Future<void> loadPosts({bool isRefresh = false}) async {
+    final token = ++_requestToken;
+    final category = state.selectedCategory;
+    final isVervee = category == _verveeCategory;
+
+    // Cache sirf normal categories ke liye
+    if (!isRefresh && !isVervee) {
+      final cached = await PostCacheService.loadPosts(category);
+      if (token != _requestToken) return;
 
       if (cached != null && cached.isNotEmpty) {
-        // ✅ Cache se instantly dikhao — loading nahi
         state = state.copyWith(
-          posts:        cached,
-          isLoading:    false,
-          currentPage:  1,
+          posts: cached,
+          isLoading: false,
+          currentPage: 1,
           hasReachedEnd: cached.length < _limit,
           errorMessage: null,
         );
-
-        // ✅ Cache expire ho gayi toh background me fresh data lao
-        // final valid = await PostCacheService.isCacheValid(state.selectedCategory);
-        // if (!valid)
-          _backgroundRefresh();
-
-        return; // Cache se show kar diya
+        _backgroundRefresh(token, category);
+        return;
       }
     }
 
-    // ✅ Cache nahi hai ya force refresh — normal flow
+    // ✅ isLoading poore load tak true rahega (Vervee me bhi) → skeleton dikhega
     state = state.copyWith(
-      isLoading:    true,
+      isLoading: true,
+      isLoadingMore: false,
       errorMessage: null,
-      posts:        isRefresh ? [] : state.posts,
-      currentPage:  isRefresh ? 1  : state.currentPage,
-      hasReachedEnd: isRefresh ? false : state.hasReachedEnd,
+      posts: [],
+      currentPage: 1,
+      hasReachedEnd: false,
     );
 
-    final result = await ref.read(postRepositoryProvider).getPosts(
-      page:     1,
-      limit:    _limit,
-      search:   state.searchQuery,
-      category: state.selectedCategory,
-    );
+    if (isVervee) {
+      final r = await _fetchVerveePosts(startPage: 1, token: token);
+      if (r == null) return;
+      state = state.copyWith(
+        posts: r.posts,
+        currentPage: r.lastPage < 1 ? 1 : r.lastPage,
+        hasReachedEnd: r.reachedEnd,
+        isLoading: false,
+        errorMessage: r.error,
+      );
+      return;
+    }
 
-    result.when(
-      initial: () {},
-      loading: () {},
-      success: (posts) {
-        state = state.copyWith(
-          posts:        posts,
-          currentPage:  1,
-          isLoading:    false,
-          hasReachedEnd: posts.length < _limit,
-        );
-        // ✅ Fresh data cache me save karo
-        PostCacheService.savePosts(
-          posts:    posts,
-          category: state.selectedCategory,
-        );
-      },
-      error: (message, _) => state = state.copyWith(
-        isLoading:    false,
-        errorMessage: message,
-      ),
+    final res = await _fetchPage(page: 1, category: category, limit: _limit);
+    if (token != _requestToken) return;
+
+    if (res.error != null) {
+      state = state.copyWith(isLoading: false, errorMessage: res.error);
+      return;
+    }
+
+    final posts = res.posts ?? const <GetPost>[];
+    state = state.copyWith(
+      posts: posts,
+      currentPage: 1,
+      isLoading: false,
+      hasReachedEnd: posts.length < _limit,
     );
+    PostCacheService.savePosts(posts: posts, category: category);
   }
 
-// ✅ Background refresh — user ko pata nahi chalega
-  Future<void> _backgroundRefresh() async {
+// ── Background refresh ──────────────────────────────────────────────────────
+  Future<void> _backgroundRefresh(int token, String category) async {
     try {
-      final result = await ref.read(postRepositoryProvider).getPosts(
-        page:     1,
-        limit:    _limit,
-        search:   state.searchQuery,
-        category: state.selectedCategory,
-      );
+      final res = await _fetchPage(page: 1, category: category, limit: _limit);
+      // user category badal chuka ho to purana data apply mat karo
+      if (token != _requestToken || state.selectedCategory != category) return;
+      if (res.posts == null) return;
 
-      result.when(
-        initial: () {},
-        loading: () {},
-        success: (posts) {
-          // ✅ Silently update + cache save
-          state = state.copyWith(posts: posts);
-          PostCacheService.savePosts(
-            posts:    posts,
-            category: state.selectedCategory,
-          );
-        },
-        error: (_, __) {}, // Fail ho toh ignore
-      );
+      state = state.copyWith(posts: res.posts!);
+      PostCacheService.savePosts(posts: res.posts!, category: category);
     } catch (_) {}
   }
 
-// ✅ refresh() — cache clear karke fresh data lao
   Future<void> refresh() async {
     await PostCacheService.clearAllCache();
     return loadPosts(isRefresh: true);
   }
 
+// ── loadMore ────────────────────────────────────────────────────────────────
   Future<void> loadMore() async {
     if (state.isLoadingMore || state.hasReachedEnd || state.isLoading) return;
 
+    final token = _requestToken; // increment nahi karna
+    final category = state.selectedCategory;
     state = state.copyWith(isLoadingMore: true);
     final nextPage = state.currentPage + 1;
 
-    final result = await ref.read(postRepositoryProvider).getPosts(
-      page:     nextPage,
-      limit:    _limit,
-      search:   state.searchQuery,
-      category: state.selectedCategory,
-    );
+    if (category == _verveeCategory) {
+      final r = await _fetchVerveePosts(startPage: nextPage, token: token);
+      if (r == null) return;
+      state = state.copyWith(
+        posts: [...state.posts, ...r.posts],
+        currentPage: r.lastPage < nextPage ? state.currentPage : r.lastPage,
+        isLoadingMore: false,
+        hasReachedEnd: r.reachedEnd,
+        errorMessage: r.error,
+      );
+      return;
+    }
 
-    result.when(
-      initial: () {},
-      loading: () {},
-      success: (newPosts) => state = state.copyWith(
-        posts:         [...state.posts, ...newPosts],
-        currentPage:   nextPage,
-        isLoadingMore: false,
-        hasReachedEnd: newPosts.length < _limit,
-      ),
-      error: (message, _) => state = state.copyWith(
-        isLoadingMore: false,
-        errorMessage:  message,
-      ),
+    final res = await _fetchPage(page: nextPage, category: category, limit: _limit);
+    if (token != _requestToken) return;
+
+    if (res.error != null) {
+      state = state.copyWith(isLoadingMore: false, errorMessage: res.error);
+      return;
+    }
+
+    final newPosts = res.posts ?? const <GetPost>[];
+    state = state.copyWith(
+      posts: [...state.posts, ...newPosts],
+      currentPage: nextPage,
+      isLoadingMore: false,
+      hasReachedEnd: newPosts.length < _limit,
     );
   }
 
   Future<void> filterByCategory(String category) async {
     if (state.selectedCategory == category) return;
-    state = state.copyWith(selectedCategory: category);
+    // ✅ Turant skeleton dikhao, purani category ki posts hatao
+    state = state.copyWith(
+      selectedCategory: category,
+      isLoading: true,
+      posts: [],
+      errorMessage: null,
+    );
     await loadPosts(isRefresh: true);
   }
 
@@ -239,6 +436,11 @@ class GetPostViewModel extends _$GetPostViewModel {
     state = state.copyWith(searchQuery: query);
     await loadPosts(isRefresh: true);
   }
+
+  // Future<void> search(String query) async {
+  //   state = state.copyWith(searchQuery: query);
+  //   await loadPosts(isRefresh: true);
+  // }
 
  // Future<void> refresh() => loadPosts(isRefresh: true);
 

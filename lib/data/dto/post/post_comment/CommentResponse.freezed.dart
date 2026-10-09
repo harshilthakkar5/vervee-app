@@ -305,7 +305,7 @@ $CommentUserCopyWith<$Res> get user {
 /// @nodoc
 mixin _$CommentUser {
 
-@JsonKey(name: 'name') String get name;
+@JsonKey(name: 'name') String get name;@JsonKey(name: 'avatar') CommentAvatar? get avatar;
 /// Create a copy of CommentUser
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -318,16 +318,16 @@ $CommentUserCopyWith<CommentUser> get copyWith => _$CommentUserCopyWithImpl<Comm
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CommentUser&&(identical(other.name, name) || other.name == name));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CommentUser&&(identical(other.name, name) || other.name == name)&&(identical(other.avatar, avatar) || other.avatar == avatar));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name);
+int get hashCode => Object.hash(runtimeType,name,avatar);
 
 @override
 String toString() {
-  return 'CommentUser(name: $name)';
+  return 'CommentUser(name: $name, avatar: $avatar)';
 }
 
 
@@ -338,11 +338,11 @@ abstract mixin class $CommentUserCopyWith<$Res>  {
   factory $CommentUserCopyWith(CommentUser value, $Res Function(CommentUser) _then) = _$CommentUserCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: 'name') String name
+@JsonKey(name: 'name') String name,@JsonKey(name: 'avatar') CommentAvatar? avatar
 });
 
 
-
+$CommentAvatarCopyWith<$Res>? get avatar;
 
 }
 /// @nodoc
@@ -355,13 +355,26 @@ class _$CommentUserCopyWithImpl<$Res>
 
 /// Create a copy of CommentUser
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? name = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? avatar = freezed,}) {
   return _then(_self.copyWith(
 name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
-as String,
+as String,avatar: freezed == avatar ? _self.avatar : avatar // ignore: cast_nullable_to_non_nullable
+as CommentAvatar?,
   ));
 }
+/// Create a copy of CommentUser
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$CommentAvatarCopyWith<$Res>? get avatar {
+    if (_self.avatar == null) {
+    return null;
+  }
 
+  return $CommentAvatarCopyWith<$Res>(_self.avatar!, (value) {
+    return _then(_self.copyWith(avatar: value));
+  });
+}
 }
 
 
@@ -443,10 +456,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: 'name')  String name)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: 'name')  String name, @JsonKey(name: 'avatar')  CommentAvatar? avatar)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _CommentUser() when $default != null:
-return $default(_that.name);case _:
+return $default(_that.name,_that.avatar);case _:
   return orElse();
 
 }
@@ -464,10 +477,10 @@ return $default(_that.name);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: 'name')  String name)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: 'name')  String name, @JsonKey(name: 'avatar')  CommentAvatar? avatar)  $default,) {final _that = this;
 switch (_that) {
 case _CommentUser():
-return $default(_that.name);case _:
+return $default(_that.name,_that.avatar);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -484,10 +497,10 @@ return $default(_that.name);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: 'name')  String name)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: 'name')  String name, @JsonKey(name: 'avatar')  CommentAvatar? avatar)?  $default,) {final _that = this;
 switch (_that) {
 case _CommentUser() when $default != null:
-return $default(_that.name);case _:
+return $default(_that.name,_that.avatar);case _:
   return null;
 
 }
@@ -499,10 +512,11 @@ return $default(_that.name);case _:
 @JsonSerializable()
 
 class _CommentUser implements CommentUser {
-  const _CommentUser({@JsonKey(name: 'name') required this.name});
+  const _CommentUser({@JsonKey(name: 'name') required this.name, @JsonKey(name: 'avatar') this.avatar});
   factory _CommentUser.fromJson(Map<String, dynamic> json) => _$CommentUserFromJson(json);
 
 @override@JsonKey(name: 'name') final  String name;
+@override@JsonKey(name: 'avatar') final  CommentAvatar? avatar;
 
 /// Create a copy of CommentUser
 /// with the given fields replaced by the non-null parameter values.
@@ -517,16 +531,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CommentUser&&(identical(other.name, name) || other.name == name));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CommentUser&&(identical(other.name, name) || other.name == name)&&(identical(other.avatar, avatar) || other.avatar == avatar));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name);
+int get hashCode => Object.hash(runtimeType,name,avatar);
 
 @override
 String toString() {
-  return 'CommentUser(name: $name)';
+  return 'CommentUser(name: $name, avatar: $avatar)';
 }
 
 
@@ -537,11 +551,11 @@ abstract mixin class _$CommentUserCopyWith<$Res> implements $CommentUserCopyWith
   factory _$CommentUserCopyWith(_CommentUser value, $Res Function(_CommentUser) _then) = __$CommentUserCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: 'name') String name
+@JsonKey(name: 'name') String name,@JsonKey(name: 'avatar') CommentAvatar? avatar
 });
 
 
-
+@override $CommentAvatarCopyWith<$Res>? get avatar;
 
 }
 /// @nodoc
@@ -554,10 +568,286 @@ class __$CommentUserCopyWithImpl<$Res>
 
 /// Create a copy of CommentUser
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? name = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? name = null,Object? avatar = freezed,}) {
   return _then(_CommentUser(
 name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
-as String,
+as String,avatar: freezed == avatar ? _self.avatar : avatar // ignore: cast_nullable_to_non_nullable
+as CommentAvatar?,
+  ));
+}
+
+/// Create a copy of CommentUser
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$CommentAvatarCopyWith<$Res>? get avatar {
+    if (_self.avatar == null) {
+    return null;
+  }
+
+  return $CommentAvatarCopyWith<$Res>(_self.avatar!, (value) {
+    return _then(_self.copyWith(avatar: value));
+  });
+}
+}
+
+
+/// @nodoc
+mixin _$CommentAvatar {
+
+@JsonKey(name: 'mascotUrl') String? get mascotUrl;
+/// Create a copy of CommentAvatar
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$CommentAvatarCopyWith<CommentAvatar> get copyWith => _$CommentAvatarCopyWithImpl<CommentAvatar>(this as CommentAvatar, _$identity);
+
+  /// Serializes this CommentAvatar to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CommentAvatar&&(identical(other.mascotUrl, mascotUrl) || other.mascotUrl == mascotUrl));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,mascotUrl);
+
+@override
+String toString() {
+  return 'CommentAvatar(mascotUrl: $mascotUrl)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $CommentAvatarCopyWith<$Res>  {
+  factory $CommentAvatarCopyWith(CommentAvatar value, $Res Function(CommentAvatar) _then) = _$CommentAvatarCopyWithImpl;
+@useResult
+$Res call({
+@JsonKey(name: 'mascotUrl') String? mascotUrl
+});
+
+
+
+
+}
+/// @nodoc
+class _$CommentAvatarCopyWithImpl<$Res>
+    implements $CommentAvatarCopyWith<$Res> {
+  _$CommentAvatarCopyWithImpl(this._self, this._then);
+
+  final CommentAvatar _self;
+  final $Res Function(CommentAvatar) _then;
+
+/// Create a copy of CommentAvatar
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? mascotUrl = freezed,}) {
+  return _then(_self.copyWith(
+mascotUrl: freezed == mascotUrl ? _self.mascotUrl : mascotUrl // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [CommentAvatar].
+extension CommentAvatarPatterns on CommentAvatar {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _CommentAvatar value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _CommentAvatar() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _CommentAvatar value)  $default,){
+final _that = this;
+switch (_that) {
+case _CommentAvatar():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _CommentAvatar value)?  $default,){
+final _that = this;
+switch (_that) {
+case _CommentAvatar() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: 'mascotUrl')  String? mascotUrl)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _CommentAvatar() when $default != null:
+return $default(_that.mascotUrl);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: 'mascotUrl')  String? mascotUrl)  $default,) {final _that = this;
+switch (_that) {
+case _CommentAvatar():
+return $default(_that.mascotUrl);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: 'mascotUrl')  String? mascotUrl)?  $default,) {final _that = this;
+switch (_that) {
+case _CommentAvatar() when $default != null:
+return $default(_that.mascotUrl);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class _CommentAvatar implements CommentAvatar {
+  const _CommentAvatar({@JsonKey(name: 'mascotUrl') this.mascotUrl});
+  factory _CommentAvatar.fromJson(Map<String, dynamic> json) => _$CommentAvatarFromJson(json);
+
+@override@JsonKey(name: 'mascotUrl') final  String? mascotUrl;
+
+/// Create a copy of CommentAvatar
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$CommentAvatarCopyWith<_CommentAvatar> get copyWith => __$CommentAvatarCopyWithImpl<_CommentAvatar>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$CommentAvatarToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CommentAvatar&&(identical(other.mascotUrl, mascotUrl) || other.mascotUrl == mascotUrl));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,mascotUrl);
+
+@override
+String toString() {
+  return 'CommentAvatar(mascotUrl: $mascotUrl)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$CommentAvatarCopyWith<$Res> implements $CommentAvatarCopyWith<$Res> {
+  factory _$CommentAvatarCopyWith(_CommentAvatar value, $Res Function(_CommentAvatar) _then) = __$CommentAvatarCopyWithImpl;
+@override @useResult
+$Res call({
+@JsonKey(name: 'mascotUrl') String? mascotUrl
+});
+
+
+
+
+}
+/// @nodoc
+class __$CommentAvatarCopyWithImpl<$Res>
+    implements _$CommentAvatarCopyWith<$Res> {
+  __$CommentAvatarCopyWithImpl(this._self, this._then);
+
+  final _CommentAvatar _self;
+  final $Res Function(_CommentAvatar) _then;
+
+/// Create a copy of CommentAvatar
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? mascotUrl = freezed,}) {
+  return _then(_CommentAvatar(
+mascotUrl: freezed == mascotUrl ? _self.mascotUrl : mascotUrl // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

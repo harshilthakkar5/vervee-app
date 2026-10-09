@@ -74,6 +74,8 @@ class AuthRepositoryImpl implements AuthRepository {
      String? gender,
     required String phoneNo,
     required bool terms,
+    String? parentEmail,    // ✅ NEW
+    String? referralCode,
   }) async {
     try {
       final response = await _authApi.registration(
@@ -87,6 +89,9 @@ class AuthRepositoryImpl implements AuthRepository {
           gender: gender,
           phoneNo: phoneNo,
           terms: terms,
+          parentEmail: parentEmail,     // ✅ NEW
+          referralCode: referralCode,   // ✅ NEW
+          referKey: referralCode,
         ),
       );
 
